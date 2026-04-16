@@ -1,14 +1,21 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import LogoutButton from "@/app/dashboard/logout-button";
+import { hasSupabaseServiceRoleKey } from "@/lib/supabase/admin";
 import { supabaseEnvConfigured } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
+import {
+  findTenantMembership,
+  getUserTenantMemberships,
+} from "@/lib/tenant/memberships";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  if (!supabaseEnvConfigured) {
-    redirect("/login");
+  if (!supabaseEnvConfigured || !hasSupabaseServiceRoleKey) {
+    redirect("/select-tenant?error=tenant-query-failed");
   }
 
   const supabase = await createSupabaseServerClient();
@@ -18,6 +25,27 @@ export default async function DashboardPage() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  const cookieStore = await cookies();
+  const selectedTenantId = cookieStore.get(ACTIVE_TENANT_COOKIE)?.value ?? "";
+  const { memberships, error } = await getUserTenantMemberships(user.id);
+
+  if (error) {
+    redirect("/select-tenant?error=tenant-query-failed");
+  }
+
+  if (memberships.length === 0) {
+    redirect("/select-tenant?error=no-memberships");
+  }
+
+  const selectedMembership = findTenantMembership(memberships, selectedTenantId);
+
+  if (!selectedMembership) {
+    if (memberships.length === 1) {
+      redirect("/api/tenant/auto-select");
+    }
+    redirect("/select-tenant");
   }
 
   return (
@@ -44,6 +72,10 @@ export default async function DashboardPage() {
         <p style={{ margin: 0 }}>Accesso autenticato confermato.</p>
         <p style={{ margin: 0 }}>
           Utente corrente: <strong>{user.email ?? user.id}</strong>
+        </p>
+        <p style={{ margin: 0 }}>
+          Tenant attivo: <strong>{selectedMembership.tenantName}</strong> · ruolo{" "}
+          <strong>{selectedMembership.role}</strong>
         </p>
         <LogoutButton />
       </section>

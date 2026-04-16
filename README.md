@@ -77,20 +77,34 @@ Risposta 200 JSON con:
 - login via Supabase Auth (email/password)
 - logout via Supabase Auth
 
+## Flusso tenant bootstrap MD-03
+
+- `/select-tenant` per scelta tenant dopo autenticazione
+- utente con una sola membership: auto-selezione tenant e redirect a `/dashboard`
+- utente con più membership: scelta esplicita tenant e salvataggio in cookie `esyy_tenant_id`
+- utente senza membership valida: blocco su `/select-tenant` con messaggio
+- middleware aggiornata: un utente autenticato senza tenant selezionato non entra in `/dashboard`
+
 ## Struttura iniziale rilevante
 
 ```text
 src/
   app/
     api/health/route.ts
-    login/page.tsx
+    (auth)/login/page.tsx
+    (auth)/select-tenant/page.tsx
+    api/tenant/auto-select/route.ts
+    api/tenant/select/route.ts
     dashboard/page.tsx
     dashboard/logout-button.tsx
   lib/
     env.ts
     supabase/client.ts
+    supabase/admin.ts
     supabase/server.ts
     supabase/middleware.ts
+    tenant/constants.ts
+    tenant/memberships.ts
 middleware.ts
 ```
 
@@ -127,7 +141,7 @@ cd esyy-flow-app
 | `SUPABASE_ANON_KEY` | server (alias) | alternativa | alias compatibile per anon key |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | client+server (alias) | alternativa | alias publishable key |
 | `SUPABASE_PUBLISHABLE_KEY` | server (alias) | alternativa | alias publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | solo server | sì (per feature server future) | secret, mai nel client |
+| `SUPABASE_SERVICE_ROLE_KEY` | solo server | sì | required da MD-03 per query membership tenant; secret, mai nel client |
 
 ## Bootstrap minimo (locale + cloud)
 
@@ -174,3 +188,10 @@ cd esyy-flow-app
 - tenant bootstrap avanzato
 - integrazioni ERP
 - modellazione DB di dominio oltre standard DB-00
+
+## Scope MD-03
+
+- bootstrap tenant con selezione `/select-tenant`
+- auto-selezione per membership singola
+- blocco accesso dashboard se tenant non selezionato
+- persistenza tenant corrente in cookie httpOnly `esyy_tenant_id`
