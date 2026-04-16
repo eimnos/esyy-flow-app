@@ -11,12 +11,19 @@ export default function Home() {
       <div style={{ maxWidth: 760, width: "100%" }}>
         <h1 style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>Esyy Flow</h1>
         <p style={{ marginBottom: "0.75rem" }}>
-          Bootstrap tecnico iniziale completato (MD-01).
+          Setup tecnico con auth base completato (MD-01 + MD-02 in corso).
         </p>
-        <p style={{ marginBottom: "1.5rem" }}>
-          Controlla lo stato applicativo su <code>/api/health</code>.
-        </p>
-        <a href="/api/health">Apri health check</a>
+        <ul style={{ margin: 0, paddingLeft: "1.1rem", display: "grid", gap: "0.4rem" }}>
+          <li>
+            <a href="/login">Vai al login</a>
+          </li>
+          <li>
+            <a href="/dashboard">Apri dashboard protetta</a>
+          </li>
+          <li>
+            <a href="/api/health">Apri health check</a>
+          </li>
+        </ul>
       </div>
     </main>
   );

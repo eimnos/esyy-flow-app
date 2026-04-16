@@ -1,6 +1,6 @@
 # Esyy Flow App
 
-Bootstrap tecnico iniziale (`MD-01`) per Esyy Flow.
+Bootstrap tecnico iniziale (`MD-01`) e auth base (`MD-02`) per Esyy Flow.
 
 Stack base:
 - Next.js (App Router) + TypeScript strict
@@ -67,15 +67,30 @@ Risposta 200 JSON con:
 - timestamp
 - stato configurazione env Supabase (`configured` / `missing`)
 
+## Flusso auth MD-02
+
+- `/login` pubblico
+- `/dashboard` protetta
+- utente anonimo su `/dashboard` -> redirect a `/login`
+- utente autenticato su `/login` -> redirect a `/dashboard`
+- login via Supabase Auth (email/password)
+- logout via Supabase Auth
+
 ## Struttura iniziale rilevante
 
 ```text
 src/
   app/
     api/health/route.ts
+    login/page.tsx
+    dashboard/page.tsx
+    dashboard/logout-button.tsx
   lib/
     env.ts
     supabase/client.ts
+    supabase/server.ts
+    supabase/middleware.ts
+middleware.ts
 ```
 
 ## Setup cloud (GitHub + Netlify)
@@ -124,6 +139,14 @@ cd esyy-flow-app
 7. push su `main`
 8. verifica deploy su `https://esyy-flow-dev.netlify.app/`
 
+## Verifica minima auth
+
+1. apri `/login`
+2. esegui login con utente Supabase valido
+3. verifica accesso a `/dashboard`
+4. esegui logout da `/dashboard`
+5. verifica redirect anonimo su `/dashboard` verso `/login`
+
 ## Scope completato in MD-01
 
 - bootstrap app Next.js
@@ -137,3 +160,16 @@ cd esyy-flow-app
 - gestione tenant e membership
 - dashboard applicativa
 - pagine dominio (anagrafiche, ODP, MES, ecc.)
+
+## Scope MD-02
+
+- login/logout base con Supabase
+- route protection base su `/dashboard`
+- redirect anonimo/autenticato su `/login` e `/dashboard`
+
+## Fuori scope MD-02
+
+- RBAC granulare
+- tenant bootstrap avanzato
+- integrazioni ERP
+- modellazione DB di dominio oltre standard DB-00

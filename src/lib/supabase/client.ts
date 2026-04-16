@@ -1,18 +1,18 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 import { env, supabaseEnvConfigured } from "@/lib/env";
 
-let browserClient: ReturnType<typeof createClient> | null = null;
+let browserClient: ReturnType<typeof createBrowserClient> | null = null;
 
 export const getSupabaseBrowserClient = () => {
   if (!supabaseEnvConfigured) {
     throw new Error(
-      "Supabase environment variables are not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+      "Supabase environment variables are not configured.",
     );
   }
 
   if (!browserClient) {
-    browserClient = createClient(
+    browserClient = createBrowserClient(
       env.NEXT_PUBLIC_SUPABASE_URL,
       env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     );
