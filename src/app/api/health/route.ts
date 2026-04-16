@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { supabaseEnvConfigured } from "@/lib/env";
+import { supabaseEnvConfigured, supabaseEnvSource } from "@/lib/env";
 
 export async function GET() {
   return NextResponse.json(
@@ -10,6 +10,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       checks: {
         supabaseEnv: supabaseEnvConfigured ? "configured" : "missing",
+        supabaseEnvSource,
       },
     },
     { status: 200 },

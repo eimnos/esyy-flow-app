@@ -88,6 +88,7 @@ cd esyy-flow-app
 3. Configura su Netlify le env:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - oppure alias compatibili: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (secret server-side)
 4. Verifica deploy branch `main` e endpoint cloud:
    - `https://esyy-flow-dev.netlify.app/`
@@ -99,6 +100,8 @@ cd esyy-flow-app
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | client+server | sì | URL progetto Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client+server | sì | chiave anon pubblica |
+| `SUPABASE_URL` | server (alias) | alternativa | alias compatibile per URL Supabase |
+| `SUPABASE_ANON_KEY` | server (alias) | alternativa | alias compatibile per anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | solo server | sì (per feature server future) | secret, mai nel client |
 
 ## Bootstrap minimo (locale + cloud)
