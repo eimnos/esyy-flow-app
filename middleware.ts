@@ -12,12 +12,21 @@ const copyCookies = (from: NextResponse, to: NextResponse) => {
 export async function middleware(request: NextRequest) {
   const { response, user } = await updateSupabaseSession(request);
   const pathname = request.nextUrl.pathname;
-  const isDashboardRoute = pathname.startsWith("/dashboard");
+  const protectedPrefixes = [
+    "/dashboard",
+    "/anagrafiche",
+    "/odp",
+    "/mes",
+    "/conto-lavoro",
+  ];
+  const isProtectedAppRoute = protectedPrefixes.some((prefix) =>
+    pathname.startsWith(prefix),
+  );
   const isAuthRoute = pathname === "/login";
   const isTenantSelectionRoute = pathname === "/select-tenant";
   const selectedTenantId = request.cookies.get(ACTIVE_TENANT_COOKIE)?.value ?? "";
 
-  if (isDashboardRoute && !user) {
+  if (isProtectedAppRoute && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     if (pathname !== "/dashboard") {
@@ -47,7 +56,7 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  if (isDashboardRoute && user && !selectedTenantId) {
+  if (isProtectedAppRoute && user && !selectedTenantId) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/select-tenant";
     redirectUrl.search = "";
@@ -60,6 +69,14 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/select-tenant", "/dashboard/:path*"],
+  matcher: [
+    "/login",
+    "/select-tenant",
+    "/dashboard/:path*",
+    "/anagrafiche/:path*",
+    "/odp/:path*",
+    "/mes/:path*",
+    "/conto-lavoro/:path*",
+  ],
 };
 

@@ -85,18 +85,30 @@ Risposta 200 JSON con:
 - utente senza membership valida: blocco su `/select-tenant` con messaggio
 - middleware aggiornata: un utente autenticato senza tenant selezionato non entra in `/dashboard`
 
+## Shell dashboard MD-04
+
+- area protetta in route group `src/app/(app)`
+- layout condiviso con header + sidebar
+- logout disponibile nell&apos;header
+- pagine protette in shell: `/dashboard`, `/anagrafiche`, `/odp`, `/mes`, `/conto-lavoro`
+
 ## Struttura iniziale rilevante
 
 ```text
 src/
   app/
+    (app)/layout.tsx
+    (app)/dashboard/page.tsx
+    (app)/anagrafiche/page.tsx
+    (app)/odp/page.tsx
+    (app)/mes/page.tsx
+    (app)/conto-lavoro/page.tsx
     api/health/route.ts
+    api/auth/logout/route.ts
     (auth)/login/page.tsx
     (auth)/select-tenant/page.tsx
     api/tenant/auto-select/route.ts
     api/tenant/select/route.ts
-    dashboard/page.tsx
-    dashboard/logout-button.tsx
   lib/
     env.ts
     supabase/client.ts
@@ -195,3 +207,10 @@ cd esyy-flow-app
 - auto-selezione per membership singola
 - blocco accesso dashboard se tenant non selezionato
 - persistenza tenant corrente in cookie httpOnly `esyy_tenant_id`
+
+## Scope MD-04
+
+- layout shell area protetta con header e sidebar
+- dashboard placeholder in `(app)`
+- pagine placeholder moduli principali in `(app)`
+- protezione middleware per tutte le route shell
