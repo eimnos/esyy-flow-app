@@ -7,6 +7,12 @@ Stack base:
 - Supabase (configurazione via variabili ambiente)
 - Deploy target: Netlify
 
+## Riferimenti ufficiali
+
+- Repository GitHub: `https://github.com/eimnos/esyy-flow-app.git`
+- Branch principale: `main`
+- Netlify dev: `https://esyy-flow-dev.netlify.app/`
+
 ## Prerequisiti
 
 - Node.js 22+
@@ -24,6 +30,7 @@ cp .env.example .env.local
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (solo server-side, non esporre mai al client)
 
 3. Installa dipendenze:
 
@@ -70,13 +77,40 @@ src/
 
 ## Setup cloud (GitHub + Netlify)
 
-1. Crea repository GitHub `esyy-flow-app`.
-2. Imposta branch principale `main`.
-3. Collega la repository al sito Netlify `esyy-flow-dev`.
-4. Configura su Netlify le env:
+1. Clona la repository ufficiale:
+
+```bash
+git clone https://github.com/eimnos/esyy-flow-app.git
+cd esyy-flow-app
+```
+
+2. Collega Netlify al repository e imposta deploy del branch `main`.
+3. Configura su Netlify le env:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-5. Verifica deploy branch `main` e endpoint `/api/health` online.
+   - `SUPABASE_SERVICE_ROLE_KEY` (secret server-side)
+4. Verifica deploy branch `main` e endpoint cloud:
+   - `https://esyy-flow-dev.netlify.app/`
+   - `https://esyy-flow-dev.netlify.app/api/health`
+
+## Variabili ambiente richieste
+
+| Variabile | Scope | Obbligatoria | Note |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | client+server | sì | URL progetto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client+server | sì | chiave anon pubblica |
+| `SUPABASE_SERVICE_ROLE_KEY` | solo server | sì (per feature server future) | secret, mai nel client |
+
+## Bootstrap minimo (locale + cloud)
+
+1. `git clone https://github.com/eimnos/esyy-flow-app.git`
+2. `cp .env.example .env.local`
+3. valorizza `.env.local`
+4. `npm install`
+5. `npm run dev`
+6. verifica `http://localhost:3000/api/health`
+7. push su `main`
+8. verifica deploy su `https://esyy-flow-dev.netlify.app/`
 
 ## Scope completato in MD-01
 
