@@ -12,6 +12,7 @@ Stack base:
 - Repository GitHub: `https://github.com/eimnos/esyy-flow-app.git`
 - Branch principale: `main`
 - Netlify dev: `https://esyy-flow-dev.netlify.app/`
+- Last deploy trigger: `2026-04-16` (manual refresh commit)
 
 ## Prerequisiti
 
