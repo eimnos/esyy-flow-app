@@ -31,6 +31,9 @@ cp .env.example .env.local
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (solo server-side, non esporre mai al client)
+- alias supportati per compatibilità:
+  - URL: `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PROJECT_URL`, `SUPABASE_PROJECT_URL`
+  - Key: `SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`
 
 3. Installa dipendenze:
 
@@ -88,7 +91,9 @@ cd esyy-flow-app
 3. Configura su Netlify le env:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - oppure alias compatibili: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+   - oppure alias compatibili:
+     - URL: `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PROJECT_URL`, `SUPABASE_PROJECT_URL`
+     - Key: `SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (secret server-side)
 4. Verifica deploy branch `main` e endpoint cloud:
    - `https://esyy-flow-dev.netlify.app/`
@@ -101,7 +106,11 @@ cd esyy-flow-app
 | `NEXT_PUBLIC_SUPABASE_URL` | client+server | sì | URL progetto Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client+server | sì | chiave anon pubblica |
 | `SUPABASE_URL` | server (alias) | alternativa | alias compatibile per URL Supabase |
+| `NEXT_PUBLIC_SUPABASE_PROJECT_URL` | client+server (alias) | alternativa | alias URL usato in alcuni setup |
+| `SUPABASE_PROJECT_URL` | server (alias) | alternativa | alias URL usato in alcuni setup |
 | `SUPABASE_ANON_KEY` | server (alias) | alternativa | alias compatibile per anon key |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | client+server (alias) | alternativa | alias publishable key |
+| `SUPABASE_PUBLISHABLE_KEY` | server (alias) | alternativa | alias publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | solo server | sì (per feature server future) | secret, mai nel client |
 
 ## Bootstrap minimo (locale + cloud)
