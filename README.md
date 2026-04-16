@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Esyy Flow App
 
-## Getting Started
+Bootstrap tecnico iniziale (`MD-01`) per Esyy Flow.
 
-First, run the development server:
+Stack base:
+- Next.js (App Router) + TypeScript strict
+- Supabase (configurazione via variabili ambiente)
+- Deploy target: Netlify
+
+## Prerequisiti
+
+- Node.js 22+
+- npm 11+
+
+## Setup locale
+
+1. Copia variabili ambiente:
+
+```bash
+cp .env.example .env.local
+```
+
+2. Imposta valori reali Supabase in `.env.local`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+3. Installa dipendenze:
+
+```bash
+npm install
+```
+
+4. Avvia in sviluppo:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Verifica health check:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `http://localhost:3000/api/health`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Script disponibili
 
-## Learn More
+- `npm run dev`: avvio locale
+- `npm run lint`: linting
+- `npm run build`: build produzione
+- `npm run start`: avvio build prod
 
-To learn more about Next.js, take a look at the following resources:
+## Endpoint tecnico
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### `GET /api/health`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Risposta 200 JSON con:
+- stato servizio
+- timestamp
+- stato configurazione env Supabase (`configured` / `missing`)
 
-## Deploy on Vercel
+## Struttura iniziale rilevante
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```text
+src/
+  app/
+    api/health/route.ts
+  lib/
+    env.ts
+    supabase/client.ts
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Setup cloud (GitHub + Netlify)
+
+1. Crea repository GitHub `esyy-flow-app`.
+2. Imposta branch principale `main`.
+3. Collega la repository al sito Netlify `esyy-flow-dev`.
+4. Configura su Netlify le env:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+5. Verifica deploy branch `main` e endpoint `/api/health` online.
+
+## Scope completato in MD-01
+
+- bootstrap app Next.js
+- base Supabase via env
+- endpoint `/api/health`
+- README operativo locale/cloud
+
+## Fuori scope MD-01
+
+- auth/login
+- gestione tenant e membership
+- dashboard applicativa
+- pagine dominio (anagrafiche, ODP, MES, ecc.)
