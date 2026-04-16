@@ -1,0 +1,9 @@
+Questo progetto riguarda lo sviluppo di una piattaforma web SaaS orientata alla produzione discreta e su commessa, con un’estensione MES shopfloor e una gestione nativa del conto lavoro attivo e passivo. Il sistema nasce con integrazione iniziale verso SAP Business One ma viene progettato con un’impostazione estendibile ad altri ERP.
+Ogni chat di questo progetto fa riferimento ad un componente del team, tranne per quanto riguarda lo sviluppo che verrà eseguito tramite codex su Visual Studio Code.
+Il team di progetto è così composto:
+Responsabile di progetto: Michael (si occupa dell'organizzazione del progetto, degli obiettivi, della definizione di sprint, deliverables, ecc)
+Responsabile funzionale: Larisa (si occupa dell'analisi funzionale della piattaforma, risponde a domande da parte degli altri componenti del team in caso di dubbi circa le funzionalità dell'applicazione, esegue i test funzionali)
+Responsabile UX/UI: Marit (si occupa degli aspetti grafici e di usability dell'applicazione, da indicazioni allo sviluppo su come costruire l'aspetto delle pagine del portale)
+Responsabile DB: Nikolay (si occupa della costruzione del DB in modo che sia il più possibile coerente e facile da gestire, provvede anche all'aggiornamento dello stesso se durante lo sviluppo dovessero esserci nuove necessità)
+Responsabile Integrazione/service layer: Ole (si occupa di definire quali flussi sono necessari per alimentare la connessione con gli ERP, definisce i service layer necessari, individua le azioni necessarie da eseguire sull'ERP per ottenere l'integrazione)
+Responsabile sviluppo: Isabell (si occupa di scrivere il codice necessario al funzionamento dell'applicazione, sulla base delle indicazioni e della documentazione ricevuta da parte degli altri componenti del team) 
