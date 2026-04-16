@@ -62,6 +62,7 @@ const fetchMembershipRows = async (userId: string) => {
   const filterCandidates = ["user_id", "profile_id"] as const;
 
   let fallbackError: string | null = null;
+  let rowsFound: MembershipLookupRow[] = [];
 
   for (const columnName of filterCandidates) {
     const { data, error } = await admin
@@ -70,7 +71,12 @@ const fetchMembershipRows = async (userId: string) => {
       .eq(columnName, userId);
 
     if (!error) {
-      return { rows: data ?? [], error: null };
+      const rows = (data ?? []) as MembershipLookupRow[];
+      if (rows.length > 0) {
+        return { rows, error: null };
+      }
+      rowsFound = rows;
+      continue;
     }
 
     const message = error.message ?? "Unknown query error";
@@ -87,12 +93,48 @@ const fetchMembershipRows = async (userId: string) => {
     return { rows: [], error: message };
   }
 
-  return {
-    rows: [],
-    error:
-      fallbackError ??
-      "Unable to query tenant_memberships. Check schema and RLS configuration.",
-  };
+  // Fallback for schemas where tenant_memberships links to profiles.id.
+  const { data: profileRows, error: profileError } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .limit(1);
+
+  if (profileError) {
+    return {
+      rows: rowsFound,
+      error:
+        fallbackError ??
+        `Unable to resolve profiles for current user: ${profileError.message}`,
+    };
+  }
+
+  const profileIds = ((profileRows ?? []) as MembershipLookupRow[])
+    .map((row) => parseString(row.id))
+    .filter(Boolean);
+
+  if (profileIds.length > 0) {
+    const { data: membershipRows, error: membershipError } = await admin
+      .from("tenant_memberships")
+      .select("*")
+      .in("profile_id", profileIds);
+
+    if (!membershipError) {
+      const rows = (membershipRows ?? []) as MembershipLookupRow[];
+      if (rows.length > 0) {
+        return { rows, error: null };
+      }
+      rowsFound = rows;
+    } else {
+      fallbackError = membershipError.message;
+    }
+  }
+
+  if (fallbackError) {
+    return { rows: rowsFound, error: fallbackError };
+  }
+
+  return { rows: rowsFound, error: null };
 };
 
 const buildTenantLookup = async (tenantIds: string[]) => {
