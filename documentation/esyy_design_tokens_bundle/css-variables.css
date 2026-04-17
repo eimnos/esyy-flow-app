@@ -1,0 +1,21 @@
+:root {
+  --esyy-color-brand-primary: #143055;
+  --esyy-color-brand-strong: #09111f;
+  --esyy-color-brand-soft: #214782;
+  --esyy-color-brand-contrast: #ffffff;
+  --esyy-color-surface-base: #f6f6f3;
+  --esyy-color-surface-card: #ffffff;
+  --esyy-color-surface-soft: #fcfcfa;
+  --esyy-color-surface-rail: #0f1f39;
+  --esyy-color-ink-primary: #0f172a;
+  --esyy-color-ink-secondary: rgba(15, 23, 42, 0.64);
+  --esyy-color-info: #1d4ed8;
+  --esyy-color-success: #15803d;
+  --esyy-color-warning: #b45309;
+  --esyy-color-danger: #b91c1c;
+  --esyy-radius-sm: 10px;
+  --esyy-radius-md: 14px;
+  --esyy-radius-lg: 16px;
+  --esyy-shadow-sm: 0 8px 30px rgba(17, 24, 39, 0.04);
+  --esyy-shadow-md: 0 16px 44px rgba(17, 24, 39, 0.08);
+}
