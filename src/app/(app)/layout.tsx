@@ -20,6 +20,7 @@ type AppLayoutProps = Readonly<{
 const navItems = [
   { href: "/dashboard", label: "Dashboard", enabled: true },
   { href: "/anagrafiche", label: "Anagrafiche", enabled: true },
+  { href: "/anagrafiche/articoli-prodotto", label: "Articoli prodotto", enabled: true },
   { href: "/odp", label: "ODP", enabled: true },
   { href: "/mes", label: "MES", enabled: true },
   { href: "/conto-lavoro", label: "Conto Lavoro", enabled: true },

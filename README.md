@@ -92,6 +92,18 @@ Risposta 200 JSON con:
 - logout disponibile nell&apos;header
 - pagine protette in shell: `/dashboard`, `/anagrafiche`, `/odp`, `/mes`, `/conto-lavoro`
 
+## Anagrafiche articoli MD-05
+
+- nuova pagina dominio read-only: `/anagrafiche/articoli-prodotto`
+- query tenant-scoped via server-side Supabase admin client
+- tabella filtrabile (ricerca, stato, copertura ERP/DIBA/ciclo/modello)
+- dettaglio read-only articolo: `/anagrafiche/articoli-prodotto/[productId]`
+- azioni rapide placeholder navigabili:
+  - `/anagrafiche/articoli-prodotto/[productId]/diba`
+  - `/anagrafiche/articoli-prodotto/[productId]/ciclo`
+  - `/anagrafiche/articoli-prodotto/[productId]/modello`
+- fallback schema-aware: adapter con candidati tabella (`products`, `product_items`, `items`)
+
 ## Struttura iniziale rilevante
 
 ```text
@@ -100,6 +112,11 @@ src/
     (app)/layout.tsx
     (app)/dashboard/page.tsx
     (app)/anagrafiche/page.tsx
+    (app)/anagrafiche/articoli-prodotto/page.tsx
+    (app)/anagrafiche/articoli-prodotto/[productId]/page.tsx
+    (app)/anagrafiche/articoli-prodotto/[productId]/diba/page.tsx
+    (app)/anagrafiche/articoli-prodotto/[productId]/ciclo/page.tsx
+    (app)/anagrafiche/articoli-prodotto/[productId]/modello/page.tsx
     (app)/odp/page.tsx
     (app)/mes/page.tsx
     (app)/conto-lavoro/page.tsx
@@ -117,6 +134,7 @@ src/
     supabase/middleware.ts
     tenant/constants.ts
     tenant/memberships.ts
+    domain/products.ts
 middleware.ts
 ```
 
@@ -214,3 +232,11 @@ cd esyy-flow-app
 - dashboard placeholder in `(app)`
 - pagine placeholder moduli principali in `(app)`
 - protezione middleware per tutte le route shell
+
+## Scope MD-05
+
+- Anagrafiche > Articoli prodotto read-only con query reali DB tenant-scoped
+- filtri base su elenco (ricerca testuale, stato, copertura configurazione)
+- badge copertura: ERP, DIBA, ciclo, modello
+- dettaglio articolo read-only e link placeholder navigabili per DIBA/ciclo/modello
+- nessun CRUD e nessuna integrazione ERP reale in questa fase
