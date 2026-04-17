@@ -142,6 +142,27 @@ Risposta 200 JSON con:
   - `/anagrafiche/elenco-distinte-ciclo/[cycleId]/modello`
 - query schema-aware candidate per famiglie ciclo/versioni/fasi in linea DB-00
 
+## Dettaglio distinta ciclo MD-09
+
+- pagina dettaglio ciclo: `/anagrafiche/elenco-distinte-ciclo/[cycleId]`
+- tab/sezioni principali: Fasi, Testata, Versione e stato
+- griglia fasi centrale con supporto read-only per:
+  - reparto/centro/terzista
+  - tipo fase interna/esterna
+  - qualita
+  - tempi standard
+  - setup
+  - risorse parallele
+- dettaglio fase (drawer via query param `phase`) con:
+  - modalita tempo fisso/proporzionale/batch
+  - capacita e simulazione tempo risultante dove disponibile
+  - regole operative
+  - evidenza fase esterna e controlli qualita
+- query reale su baseline canonica ciclo:
+  - `routing_templates`
+  - `routing_template_versions`
+  - `routing_template_version_steps`
+
 ## Struttura iniziale rilevante
 
 ```text
@@ -159,6 +180,7 @@ src/
     (app)/anagrafiche/elenco-diba/[dibaId]/page.tsx
     (app)/anagrafiche/elenco-diba/[dibaId]/modello/page.tsx
     (app)/anagrafiche/elenco-distinte-ciclo/page.tsx
+    (app)/anagrafiche/elenco-distinte-ciclo/[cycleId]/page.tsx
     (app)/anagrafiche/elenco-distinte-ciclo/[cycleId]/modello/page.tsx
     (app)/odp/page.tsx
     (app)/mes/page.tsx
@@ -181,6 +203,7 @@ src/
     domain/diba.ts
     domain/diba-detail.ts
     domain/cycles.ts
+    domain/cycle-detail.ts
 middleware.ts
 ```
 
@@ -308,3 +331,10 @@ cd esyy-flow-app
 - stato/versione visibili, numero fasi visibile, tipo processo visibile
 - presenza qualita visibile e collegamento rapido ai modelli produttivi
 - focus solo elenco/lettura, nessun editing completo e nessuna gestione avanzata rami/vista grafica ciclo
+
+## Scope MD-09
+
+- Anagrafiche > Dettaglio distinta ciclo con testata, tab/sezioni principali e griglia fasi centrale
+- lettura fase: reparto/centro/terzista, tipo fase, qualita, tempi standard, setup, risorse parallele, stato/versione
+- dettaglio fase read-only con modalita tempo, capacita/simulazione, regole operative, evidenza fase esterna e controlli qualita
+- nessun editing completo ciclo, nessuna vista grafica editabile, nessuna variazione strutturale DB autonoma

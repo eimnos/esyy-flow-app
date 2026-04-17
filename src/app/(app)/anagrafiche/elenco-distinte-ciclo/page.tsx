@@ -263,7 +263,9 @@ export default async function ElencoDistinteCicloPage({
             {catalog.cycles.map((cycle) => (
               <tr key={cycle.id}>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                  <strong>{cycle.code}</strong>
+                  <Link href={`/anagrafiche/elenco-distinte-ciclo/${cycle.id}`}>
+                    <strong>{cycle.code}</strong>
+                  </Link>
                 </td>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                   {cycle.name}
@@ -297,9 +299,12 @@ export default async function ElencoDistinteCicloPage({
                   )}
                 </td>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                  <Link href={`/anagrafiche/elenco-distinte-ciclo/${cycle.id}/modello`}>
-                    Modello
-                  </Link>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <Link href={`/anagrafiche/elenco-distinte-ciclo/${cycle.id}`}>Dettaglio</Link>
+                    <Link href={`/anagrafiche/elenco-distinte-ciclo/${cycle.id}/modello`}>
+                      Modello
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
