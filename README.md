@@ -132,6 +132,16 @@ Risposta 200 JSON con:
   - `bom_template_versions`
   - `bom_template_version_lines`
 
+## Elenco distinte ciclo MD-08
+
+- nuova pagina dominio read-only: `/anagrafiche/elenco-distinte-ciclo`
+- lista tenant-scoped cicli con stato e versione visibili
+- filtri base: ricerca, stato, versione, tipo processo, presenza qualita, collegamento modello
+- colonne principali: numero fasi, tipo processo (interno/misto/esterno), presenza qualita
+- accesso rapido al modello produttivo:
+  - `/anagrafiche/elenco-distinte-ciclo/[cycleId]/modello`
+- query schema-aware candidate per famiglie ciclo/versioni/fasi in linea DB-00
+
 ## Struttura iniziale rilevante
 
 ```text
@@ -148,6 +158,8 @@ src/
     (app)/anagrafiche/elenco-diba/page.tsx
     (app)/anagrafiche/elenco-diba/[dibaId]/page.tsx
     (app)/anagrafiche/elenco-diba/[dibaId]/modello/page.tsx
+    (app)/anagrafiche/elenco-distinte-ciclo/page.tsx
+    (app)/anagrafiche/elenco-distinte-ciclo/[cycleId]/modello/page.tsx
     (app)/odp/page.tsx
     (app)/mes/page.tsx
     (app)/conto-lavoro/page.tsx
@@ -168,6 +180,7 @@ src/
     domain/products.ts
     domain/diba.ts
     domain/diba-detail.ts
+    domain/cycles.ts
 middleware.ts
 ```
 
@@ -288,3 +301,10 @@ cd esyy-flow-app
 - lettura riga materiali: quantita, UM, alternative/opzionali, note, versione/stato
 - dettaglio riga read-only con regole di consumo/prelievo dove disponibili nel DB
 - nessun editing DIBA, nessun workflow avanzato di versioning, nessuna variazione strutturale DB autonoma
+
+## Scope MD-08
+
+- Anagrafiche > Elenco distinte ciclo read-only con query reali DB tenant-scoped
+- stato/versione visibili, numero fasi visibile, tipo processo visibile
+- presenza qualita visibile e collegamento rapido ai modelli produttivi
+- focus solo elenco/lettura, nessun editing completo e nessuna gestione avanzata rami/vista grafica ciclo
