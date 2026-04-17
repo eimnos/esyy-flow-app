@@ -1,0 +1,58 @@
+{
+  "font_family": {
+    "sans": "Inter, ui-sans-serif, system-ui, sans-serif",
+    "mono": "ui-monospace, SFMono-Regular, Menlo, monospace"
+  },
+  "font_weight": {
+    "regular": 400,
+    "medium": 500,
+    "semibold": 600
+  },
+  "font_size": {
+    "display": {
+      "size": 56,
+      "line_height": 0.95,
+      "letter_spacing": -0.06
+    },
+    "page_title": {
+      "size": 32,
+      "line_height": 1.0,
+      "letter_spacing": -0.04
+    },
+    "section_title": {
+      "size": 20,
+      "line_height": 1.1,
+      "letter_spacing": -0.02
+    },
+    "body": {
+      "size": 14,
+      "line_height": 1.6,
+      "letter_spacing": 0
+    },
+    "body_small": {
+      "size": 13,
+      "line_height": 1.5,
+      "letter_spacing": 0
+    },
+    "meta": {
+      "size": 11,
+      "line_height": 1.4,
+      "letter_spacing": 0.28
+    },
+    "table": {
+      "size": 13,
+      "line_height": 1.4,
+      "letter_spacing": 0
+    },
+    "touch_title": {
+      "size": 22,
+      "line_height": 1.05,
+      "letter_spacing": -0.02
+    },
+    "touch_body": {
+      "size": 16,
+      "line_height": 1.45,
+      "letter_spacing": 0
+    }
+  }
+}

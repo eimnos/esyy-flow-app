@@ -1,0 +1,83 @@
+{
+  "brand": {
+    "primary": "#143055",
+    "primary_strong": "#09111f",
+    "primary_soft": "#214782",
+    "primary_contrast": "#ffffff",
+    "gradient_office": [
+      "#0b1220",
+      "#13233f",
+      "#1f3d73"
+    ],
+    "gradient_hero": [
+      "#09111f",
+      "#143055",
+      "#214782"
+    ]
+  },
+  "surface": {
+    "base": "#f6f6f3",
+    "card": "#ffffff",
+    "soft": "#fcfcfa",
+    "subtle": "#f7f8fc",
+    "rail": "#0f1f39",
+    "rail_strong": "#09111f",
+    "shopfloor_base": "#0a1120",
+    "shopfloor_panel": "#132033"
+  },
+  "ink": {
+    "primary": "#0f172a",
+    "secondary": "rgba(15,23,42,0.64)",
+    "muted": "rgba(15,23,42,0.46)",
+    "inverse": "#ffffff"
+  },
+  "border": {
+    "subtle": "rgba(15,23,42,0.08)",
+    "strong": "rgba(15,23,42,0.14)",
+    "inverse": "rgba(255,255,255,0.12)"
+  },
+  "severity": {
+    "info": {
+      "base": "#1d4ed8",
+      "surface": "#dbeafe"
+    },
+    "success": {
+      "base": "#15803d",
+      "surface": "#dcfce7"
+    },
+    "warning": {
+      "base": "#b45309",
+      "surface": "#fef3c7"
+    },
+    "danger": {
+      "base": "#b91c1c",
+      "surface": "#fee2e2"
+    },
+    "neutral": {
+      "base": "#475569",
+      "surface": "#e2e8f0"
+    }
+  },
+  "state": {
+    "active": {
+      "accent": "#143055",
+      "surface": "#dbeafe"
+    },
+    "delayed": {
+      "accent": "#b45309",
+      "surface": "#fef3c7"
+    },
+    "blocked": {
+      "accent": "#b91c1c",
+      "surface": "#fee2e2"
+    },
+    "completed": {
+      "accent": "#15803d",
+      "surface": "#dcfce7"
+    },
+    "draft": {
+      "accent": "#475569",
+      "surface": "#e2e8f0"
+    }
+  }
+}
