@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-
+import { buildAppRedirect } from "@/lib/http/redirect";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
@@ -7,7 +6,7 @@ export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
 
-  const response = NextResponse.redirect(new URL("/login", request.url));
+  const response = buildAppRedirect(request, "/login");
   response.cookies.set(ACTIVE_TENANT_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
