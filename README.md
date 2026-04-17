@@ -104,6 +104,17 @@ Risposta 200 JSON con:
   - `/anagrafiche/articoli-prodotto/[productId]/modello`
 - fallback schema-aware: adapter con candidati tabella (`products`, `product_items`, `items`)
 
+## Elenco DIBA MD-06
+
+- nuova pagina dominio read-only: `/anagrafiche/elenco-diba`
+- lista tenant-scoped DIBA con stato e versione visibili
+- filtri base: ricerca, stato, presenza versione, collegamento articolo, collegamento modello, evidenza alternative
+- collegamento rapido:
+  - dettaglio DIBA: `/anagrafiche/elenco-diba/[dibaId]`
+  - placeholder modello produttivo: `/anagrafiche/elenco-diba/[dibaId]/modello`
+  - link rapido ad articolo prodotto quando disponibile
+- query schema-aware candidate per famiglie DIBA/versioni in linea DB-00
+
 ## Struttura iniziale rilevante
 
 ```text
@@ -117,6 +128,9 @@ src/
     (app)/anagrafiche/articoli-prodotto/[productId]/diba/page.tsx
     (app)/anagrafiche/articoli-prodotto/[productId]/ciclo/page.tsx
     (app)/anagrafiche/articoli-prodotto/[productId]/modello/page.tsx
+    (app)/anagrafiche/elenco-diba/page.tsx
+    (app)/anagrafiche/elenco-diba/[dibaId]/page.tsx
+    (app)/anagrafiche/elenco-diba/[dibaId]/modello/page.tsx
     (app)/odp/page.tsx
     (app)/mes/page.tsx
     (app)/conto-lavoro/page.tsx
@@ -135,6 +149,7 @@ src/
     tenant/constants.ts
     tenant/memberships.ts
     domain/products.ts
+    domain/diba.ts
 middleware.ts
 ```
 
@@ -240,3 +255,11 @@ cd esyy-flow-app
 - badge copertura: ERP, DIBA, ciclo, modello
 - dettaglio articolo read-only e link placeholder navigabili per DIBA/ciclo/modello
 - nessun CRUD e nessuna integrazione ERP reale in questa fase
+
+## Scope MD-06
+
+- Anagrafiche > Elenco DIBA read-only con query reali DB tenant-scoped
+- stato e versione DIBA visibili in lista
+- collegamento rapido al modello produttivo (placeholder tecnico) e all'articolo dove disponibile
+- evidenza alternative/opzionali dove disponibile dalle righe versione
+- nessun CRUD esteso e nessuna gestione completa del versioning avanzato in UI

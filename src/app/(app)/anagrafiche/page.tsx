@@ -45,6 +45,36 @@ export default function AnagrafichePage() {
           </Link>
         </div>
       </article>
+
+      <article
+        style={{
+          border: "1px solid #d1d5db",
+          borderRadius: "0.75rem",
+          background: "#ffffff",
+          padding: "1rem",
+          display: "grid",
+          gap: "0.7rem",
+        }}
+      >
+        <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Elenco DIBA</h2>
+        <p style={{ margin: 0, color: "#4b5563" }}>
+          Libreria DIBA tenant-scoped in lettura con versione, stato, collegamento articolo e
+          accesso rapido al modello produttivo.
+        </p>
+        <div>
+          <Link
+            href="/anagrafiche/elenco-diba"
+            style={{
+              display: "inline-block",
+              padding: "0.5rem 0.75rem",
+              border: "1px solid #cbd5e1",
+              borderRadius: "0.5rem",
+            }}
+          >
+            Apri elenco DIBA
+          </Link>
+        </div>
+      </article>
     </section>
   );
 }
