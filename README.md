@@ -111,9 +111,26 @@ Risposta 200 JSON con:
 - filtri base: ricerca, stato, presenza versione, collegamento articolo, collegamento modello, evidenza alternative
 - collegamento rapido:
   - dettaglio DIBA: `/anagrafiche/elenco-diba/[dibaId]`
-  - placeholder modello produttivo: `/anagrafiche/elenco-diba/[dibaId]/modello`
+- placeholder modello produttivo: `/anagrafiche/elenco-diba/[dibaId]/modello`
   - link rapido ad articolo prodotto quando disponibile
 - query schema-aware candidate per famiglie DIBA/versioni in linea DB-00
+
+## Dettaglio DIBA MD-07
+
+- pagina dettaglio DIBA potenziata: `/anagrafiche/elenco-diba/[dibaId]`
+- sezioni principali con tab read-only: Materiali, Testata, Versione e stato
+- griglia materiali centrale con:
+  - quantita, base, UM, opzionale, alternativa, note
+  - dettaglio riga navigabile (query param `line`)
+- dettaglio riga read-only con supporto (dove disponibile) per:
+  - base di calcolo e moltiplicatore
+  - conversioni UM e arrotondamenti
+  - multipli di prelievo e minimo prelevabile
+  - distinzione consumo teorico vs prelievo reale
+- query reale su baseline canonica DB-00:
+  - `bom_templates`
+  - `bom_template_versions`
+  - `bom_template_version_lines`
 
 ## Struttura iniziale rilevante
 
@@ -150,6 +167,7 @@ src/
     tenant/memberships.ts
     domain/products.ts
     domain/diba.ts
+    domain/diba-detail.ts
 middleware.ts
 ```
 
@@ -263,3 +281,10 @@ cd esyy-flow-app
 - collegamento rapido al modello produttivo (placeholder tecnico) e all'articolo dove disponibile
 - evidenza alternative/opzionali dove disponibile dalle righe versione
 - nessun CRUD esteso e nessuna gestione completa del versioning avanzato in UI
+
+## Scope MD-07
+
+- Anagrafiche > Dettaglio DIBA con testata, tab/sezioni principali e griglia materiali centrale
+- lettura riga materiali: quantita, UM, alternative/opzionali, note, versione/stato
+- dettaglio riga read-only con regole di consumo/prelievo dove disponibili nel DB
+- nessun editing DIBA, nessun workflow avanzato di versioning, nessuna variazione strutturale DB autonoma
