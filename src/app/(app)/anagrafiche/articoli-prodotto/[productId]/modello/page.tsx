@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import ConfigurationPlaceholder from "@/app/(app)/anagrafiche/articoli-prodotto/_components/configuration-placeholder";
-import { getTenantProductById } from "@/lib/domain/products";
+import ProductionModelDetailView from "@/app/(app)/anagrafiche/_components/production-model-detail-view";
+import { getTenantProductionModelDetail } from "@/lib/domain/production-model-detail";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +11,27 @@ type ProductModelPlaceholderPageProps = {
   params: Promise<{
     productId: string;
   }>;
+  searchParams: Promise<{
+    tab?: string | string[];
+  }>;
+};
+
+const normalizeParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+
+const normalizeTab = (value: string): "overview" | "cycles" | "process" => {
+  if (value === "cycles") {
+    return "cycles";
+  }
+  if (value === "process") {
+    return "process";
+  }
+  return "overview";
 };
 
 export default async function ProductModelPlaceholderPage({
   params,
+  searchParams,
 }: ProductModelPlaceholderPageProps) {
   const cookieStore = await cookies();
   const selectedTenantId = cookieStore.get(ACTIVE_TENANT_COOKIE)?.value ?? "";
@@ -23,17 +40,20 @@ export default async function ProductModelPlaceholderPage({
   }
 
   const resolvedParams = await params;
-  const detail = await getTenantProductById(selectedTenantId, resolvedParams.productId);
-  const title = detail.product
-    ? `Modello articolo ${detail.product.code}`
-    : "Modello articolo (placeholder)";
+  const resolvedSearchParams = await searchParams;
+  const activeTab = normalizeTab(normalizeParam(resolvedSearchParams.tab));
+  const detail = await getTenantProductionModelDetail(selectedTenantId, {
+    productId: resolvedParams.productId,
+  });
 
   return (
-    <ConfigurationPlaceholder
-      title={title}
-      subtitle="Area read-only preparata per aggancio modello produttivo in wave successive."
+    <ProductionModelDetailView
+      detail={detail}
+      title="Dettaglio modello produttivo"
       backHref={`/anagrafiche/articoli-prodotto/${resolvedParams.productId}`}
       backLabel="Torna al dettaglio articolo"
+      baseHref={`/anagrafiche/articoli-prodotto/${resolvedParams.productId}/modello`}
+      activeTab={activeTab}
     />
   );
 }

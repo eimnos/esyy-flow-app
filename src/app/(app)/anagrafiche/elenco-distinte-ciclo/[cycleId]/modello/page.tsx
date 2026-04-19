@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import ConfigurationPlaceholder from "@/app/(app)/anagrafiche/articoli-prodotto/_components/configuration-placeholder";
-import { getTenantCycleById } from "@/lib/domain/cycles";
+import ProductionModelDetailView from "@/app/(app)/anagrafiche/_components/production-model-detail-view";
+import { getTenantProductionModelDetail } from "@/lib/domain/production-model-detail";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +11,28 @@ type CycleModelPlaceholderPageProps = {
   params: Promise<{
     cycleId: string;
   }>;
+  searchParams: Promise<{
+    tab?: string | string[];
+  }>;
 };
 
-export default async function CycleModelPlaceholderPage({ params }: CycleModelPlaceholderPageProps) {
+const normalizeParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+
+const normalizeTab = (value: string): "overview" | "cycles" | "process" => {
+  if (value === "cycles") {
+    return "cycles";
+  }
+  if (value === "process") {
+    return "process";
+  }
+  return "overview";
+};
+
+export default async function CycleModelPlaceholderPage({
+  params,
+  searchParams,
+}: CycleModelPlaceholderPageProps) {
   const cookieStore = await cookies();
   const selectedTenantId = cookieStore.get(ACTIVE_TENANT_COOKIE)?.value ?? "";
   if (!selectedTenantId) {
@@ -21,17 +40,20 @@ export default async function CycleModelPlaceholderPage({ params }: CycleModelPl
   }
 
   const resolvedParams = await params;
-  const detail = await getTenantCycleById(selectedTenantId, resolvedParams.cycleId);
-  const title = detail.cycle
-    ? `Modello produttivo ciclo ${detail.cycle.code}`
-    : "Modello produttivo ciclo (placeholder)";
+  const resolvedSearchParams = await searchParams;
+  const activeTab = normalizeTab(normalizeParam(resolvedSearchParams.tab));
+  const detail = await getTenantProductionModelDetail(selectedTenantId, {
+    cycleId: resolvedParams.cycleId,
+  });
 
   return (
-    <ConfigurationPlaceholder
-      title={title}
-      subtitle="Accesso rapido al modello produttivo collegato: placeholder tecnico MD-08."
-      backHref="/anagrafiche/elenco-distinte-ciclo"
-      backLabel="Torna all'elenco distinte ciclo"
+    <ProductionModelDetailView
+      detail={detail}
+      title="Dettaglio modello produttivo"
+      backHref={`/anagrafiche/elenco-distinte-ciclo/${resolvedParams.cycleId}`}
+      backLabel="Torna al dettaglio ciclo"
+      baseHref={`/anagrafiche/elenco-distinte-ciclo/${resolvedParams.cycleId}/modello`}
+      activeTab={activeTab}
     />
   );
 }

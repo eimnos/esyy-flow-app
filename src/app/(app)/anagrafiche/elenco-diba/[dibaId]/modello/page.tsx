@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import ConfigurationPlaceholder from "@/app/(app)/anagrafiche/articoli-prodotto/_components/configuration-placeholder";
-import { getTenantDibaById } from "@/lib/domain/diba";
+import ProductionModelDetailView from "@/app/(app)/anagrafiche/_components/production-model-detail-view";
+import { getTenantProductionModelDetail } from "@/lib/domain/production-model-detail";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +11,27 @@ type DibaModelPlaceholderPageProps = {
   params: Promise<{
     dibaId: string;
   }>;
+  searchParams: Promise<{
+    tab?: string | string[];
+  }>;
+};
+
+const normalizeParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+
+const normalizeTab = (value: string): "overview" | "cycles" | "process" => {
+  if (value === "cycles") {
+    return "cycles";
+  }
+  if (value === "process") {
+    return "process";
+  }
+  return "overview";
 };
 
 export default async function DibaModelPlaceholderPage({
   params,
+  searchParams,
 }: DibaModelPlaceholderPageProps) {
   const cookieStore = await cookies();
   const selectedTenantId = cookieStore.get(ACTIVE_TENANT_COOKIE)?.value ?? "";
@@ -23,17 +40,20 @@ export default async function DibaModelPlaceholderPage({
   }
 
   const resolvedParams = await params;
-  const detail = await getTenantDibaById(selectedTenantId, resolvedParams.dibaId);
-  const title = detail.diba
-    ? `Modello produttivo per DIBA ${detail.diba.code}`
-    : "Modello produttivo DIBA (placeholder)";
+  const resolvedSearchParams = await searchParams;
+  const activeTab = normalizeTab(normalizeParam(resolvedSearchParams.tab));
+  const detail = await getTenantProductionModelDetail(selectedTenantId, {
+    dibaId: resolvedParams.dibaId,
+  });
 
   return (
-    <ConfigurationPlaceholder
-      title={title}
-      subtitle="Accesso rapido al modello produttivo collegato: placeholder tecnico MD-06."
+    <ProductionModelDetailView
+      detail={detail}
+      title="Dettaglio modello produttivo"
       backHref={`/anagrafiche/elenco-diba/${resolvedParams.dibaId}`}
       backLabel="Torna al dettaglio DIBA"
+      baseHref={`/anagrafiche/elenco-diba/${resolvedParams.dibaId}/modello`}
+      activeTab={activeTab}
     />
   );
 }
