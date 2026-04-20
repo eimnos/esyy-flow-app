@@ -21,6 +21,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", enabled: true },
   { href: "/anagrafiche", label: "Anagrafiche", enabled: true },
   { href: "/pre-industrializzazione", label: "Pre-industrializzazione", enabled: true },
+  { href: "/commesse", label: "Commesse", enabled: true },
   { href: "/anagrafiche/articoli-prodotto", label: "Articoli prodotto", enabled: true },
   { href: "/anagrafiche/elenco-diba", label: "Elenco DIBA", enabled: true },
   { href: "/anagrafiche/elenco-distinte-ciclo", label: "Elenco distinte ciclo", enabled: true },
