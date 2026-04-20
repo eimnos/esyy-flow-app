@@ -1,0 +1,59 @@
+:root {
+  --esyy-color-brand-primary: #143055;
+  --esyy-color-brand-strong: #09111f;
+  --esyy-color-brand-soft: #214782;
+  --esyy-color-brand-contrast: #ffffff;
+
+  --esyy-color-surface-base: #f6f6f3;
+  --esyy-color-surface-card: #ffffff;
+  --esyy-color-surface-soft: #fcfcfa;
+  --esyy-color-surface-subtle: #f7f8fc;
+  --esyy-color-surface-rail: #0f1f39;
+  --esyy-color-surface-rail-strong: #09111f;
+  --esyy-color-surface-shopfloor: #0a1120;
+  --esyy-color-surface-shopfloor-panel: #132033;
+
+  --esyy-color-ink-primary: #0f172a;
+  --esyy-color-ink-secondary: rgba(15, 23, 42, 0.64);
+  --esyy-color-ink-muted: rgba(15, 23, 42, 0.46);
+  --esyy-color-ink-inverse: #ffffff;
+
+  --esyy-color-border-subtle: rgba(15, 23, 42, 0.08);
+  --esyy-color-border-strong: rgba(15, 23, 42, 0.14);
+  --esyy-color-border-inverse: rgba(255, 255, 255, 0.12);
+
+  --esyy-color-info: #1d4ed8;
+  --esyy-color-success: #15803d;
+  --esyy-color-warning: #b45309;
+  --esyy-color-danger: #b91c1c;
+  --esyy-color-neutral: #475569;
+
+  --esyy-font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --esyy-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --esyy-radius-sm: 10px;
+  --esyy-radius-md: 14px;
+  --esyy-radius-lg: 16px;
+  --esyy-radius-xl: 20px;
+
+  --esyy-space-1: 4px;
+  --esyy-space-2: 8px;
+  --esyy-space-3: 12px;
+  --esyy-space-4: 16px;
+  --esyy-space-5: 20px;
+  --esyy-space-6: 24px;
+  --esyy-space-8: 32px;
+  --esyy-space-10: 40px;
+  --esyy-space-12: 48px;
+
+  --esyy-shadow-sm: 0 8px 30px rgba(17, 24, 39, 0.04);
+  --esyy-shadow-md: 0 16px 44px rgba(17, 24, 39, 0.08);
+  --esyy-shadow-lg: 0 24px 70px rgba(17, 24, 39, 0.18);
+
+  --esyy-breakpoint-office-sm: 768px;
+  --esyy-breakpoint-office-md: 1024px;
+  --esyy-breakpoint-office-lg: 1280px;
+  --esyy-breakpoint-shopfloor-tablet: 820px;
+  --esyy-breakpoint-shopfloor-wide: 1180px;
+  --esyy-breakpoint-scanner-compact: 480px;
+}

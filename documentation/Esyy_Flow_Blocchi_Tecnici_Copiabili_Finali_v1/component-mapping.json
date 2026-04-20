@@ -1,0 +1,161 @@
+{
+  "AppShell": {
+    "description": "Shell principale desktop con rail laterale scura, topbar e content frame.",
+    "environment": [
+      "office"
+    ],
+    "priority": 1,
+    "variants": [
+      "default",
+      "dense"
+    ],
+    "depends_on": [
+      "SidebarNav",
+      "Topbar",
+      "PageHeader"
+    ]
+  },
+  "SidebarNav": {
+    "description": "Navigazione laterale per aree funzionali.",
+    "environment": [
+      "office"
+    ],
+    "priority": 1,
+    "variants": [
+      "default",
+      "collapsed"
+    ],
+    "depends_on": []
+  },
+  "KpiCard": {
+    "description": "Card sintetica per KPI navigabili.",
+    "environment": [
+      "office",
+      "shopfloor"
+    ],
+    "priority": 2,
+    "variants": [
+      "default",
+      "warning",
+      "danger",
+      "success"
+    ],
+    "depends_on": [
+      "StatusBadge"
+    ]
+  },
+  "StatusBadge": {
+    "description": "Badge semantico per stato, severità o natura.",
+    "environment": [
+      "office",
+      "shopfloor"
+    ],
+    "priority": 2,
+    "variants": [
+      "neutral",
+      "info",
+      "success",
+      "warning",
+      "danger"
+    ],
+    "depends_on": []
+  },
+  "DataTable": {
+    "description": "Tabella dati con header ordinabili, filtri e righe espandibili.",
+    "environment": [
+      "office"
+    ],
+    "priority": 3,
+    "variants": [
+      "default",
+      "dense",
+      "with_row_actions"
+    ],
+    "depends_on": [
+      "StatusBadge"
+    ]
+  },
+  "EntityDrawer": {
+    "description": "Drawer contestuale per dettaglio operativo o editing focalizzato.",
+    "environment": [
+      "office"
+    ],
+    "priority": 3,
+    "variants": [
+      "detail",
+      "edit",
+      "action"
+    ],
+    "depends_on": []
+  },
+  "PrimaryButton": {
+    "description": "CTA primaria brand.",
+    "environment": [
+      "office",
+      "shopfloor"
+    ],
+    "priority": 1,
+    "variants": [
+      "office",
+      "shopfloor",
+      "danger"
+    ],
+    "depends_on": []
+  },
+  "FormField": {
+    "description": "Base per input, select, date, helper e validation state.",
+    "environment": [
+      "office",
+      "shopfloor"
+    ],
+    "priority": 2,
+    "variants": [
+      "text",
+      "select",
+      "date",
+      "segmented_boolean"
+    ],
+    "depends_on": []
+  },
+  "TimelineBlock": {
+    "description": "Vista cronologica di eventi, avanzamenti o tracciabilità.",
+    "environment": [
+      "office"
+    ],
+    "priority": 4,
+    "variants": [
+      "activity_feed",
+      "traceability",
+      "history"
+    ],
+    "depends_on": [
+      "StatusBadge"
+    ]
+  },
+  "ScannerActionBar": {
+    "description": "Barra azioni shopfloor/scanner touch-first.",
+    "environment": [
+      "shopfloor"
+    ],
+    "priority": 4,
+    "variants": [
+      "default",
+      "critical"
+    ],
+    "depends_on": [
+      "PrimaryButton"
+    ]
+  },
+  "LabelEditorCanvas": {
+    "description": "Canvas editor etichette con campi dinamici e barcode.",
+    "environment": [
+      "office"
+    ],
+    "priority": 5,
+    "variants": [
+      "edit",
+      "preview"
+    ],
+    "depends_on": []
+  }
+}

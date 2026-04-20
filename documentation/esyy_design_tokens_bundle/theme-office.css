@@ -1,0 +1,18 @@
+.theme-office {
+  background: var(--esyy-color-surface-base);
+  color: var(--esyy-color-ink-primary);
+}
+.theme-office .app-rail {
+  background: linear-gradient(180deg, #0b1220 0%, #13233f 52%, #1f3d73 100%);
+  color: #ffffff;
+}
+.theme-office .card {
+  background: var(--esyy-color-surface-card);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--esyy-radius-md);
+  box-shadow: var(--esyy-shadow-sm);
+}
+.theme-office .btn-primary {
+  background: linear-gradient(135deg, #13233f 0%, #1f3d73 100%);
+  color: #ffffff;
+}

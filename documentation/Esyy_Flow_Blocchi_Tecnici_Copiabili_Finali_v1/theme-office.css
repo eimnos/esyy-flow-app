@@ -1,0 +1,65 @@
+.theme-office {
+  background: var(--esyy-color-surface-base);
+  color: var(--esyy-color-ink-primary);
+  font-family: var(--esyy-font-sans);
+}
+
+.theme-office .app-rail {
+  background: linear-gradient(180deg, #0b1220 0%, #13233f 52%, #1f3d73 100%);
+  color: var(--esyy-color-ink-inverse);
+}
+
+.theme-office .card,
+.theme-office .panel {
+  background: var(--esyy-color-surface-card);
+  border: 1px solid var(--esyy-color-border-subtle);
+  border-radius: var(--esyy-radius-md);
+  box-shadow: var(--esyy-shadow-sm);
+}
+
+.theme-office .card-soft {
+  background: var(--esyy-color-surface-soft);
+  border: 1px solid var(--esyy-color-border-subtle);
+  border-radius: var(--esyy-radius-md);
+}
+
+.theme-office .btn-primary {
+  background: linear-gradient(135deg, #13233f 0%, #1f3d73 100%);
+  color: var(--esyy-color-brand-contrast);
+  border-radius: var(--esyy-radius-md);
+}
+
+.theme-office .btn-secondary {
+  background: var(--esyy-color-surface-card);
+  color: var(--esyy-color-ink-primary);
+  border: 1px solid var(--esyy-color-border-strong);
+  border-radius: var(--esyy-radius-md);
+}
+
+.theme-office .table-shell {
+  background: var(--esyy-color-surface-card);
+  border: 1px solid var(--esyy-color-border-subtle);
+  border-radius: var(--esyy-radius-md);
+  overflow: hidden;
+}
+
+.theme-office .table-header-cell {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--esyy-color-ink-primary);
+}
+
+.theme-office .status-badge[data-severity="warning"] {
+  background: #fef3c7;
+  color: var(--esyy-color-warning);
+}
+
+.theme-office .status-badge[data-severity="danger"] {
+  background: #fee2e2;
+  color: var(--esyy-color-danger);
+}
+
+.theme-office .status-badge[data-severity="success"] {
+  background: #dcfce7;
+  color: var(--esyy-color-success);
+}
