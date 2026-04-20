@@ -111,6 +111,7 @@ const MODEL_SELECTION_RULE_COLUMNS = [
 ];
 const MODEL_CURRENT_VERSION_COLUMNS = ["current_version_no", "current_version"];
 
+const VERSION_ID_COLUMNS = ["id", "production_model_version_id", "model_version_id"];
 const VERSION_PARENT_COLUMNS = ["production_model_id", "model_id", "template_id"];
 const VERSION_NO_COLUMNS = ["version_no", "revision_no", "version"];
 const VERSION_STATUS_COLUMNS = ["status", "state", "lifecycle_status", "is_active"];
@@ -140,6 +141,15 @@ const VERSION_SELECTION_RULE_COLUMNS = [
   "rules_json",
   "policy_json",
 ];
+
+const ROUTING_LINK_MODEL_VERSION_COLUMNS = ["production_model_version_id", "model_version_id"];
+const ROUTING_LINK_TEMPLATE_COLUMNS = ["routing_template_id", "routing_id"];
+const ROUTING_LINK_TEMPLATE_VERSION_COLUMNS = [
+  "routing_template_version_id",
+  "routing_version_id",
+];
+const ROUTING_VERSION_ID_COLUMNS = ["id", "routing_template_version_id", "routing_version_id"];
+const ROUTING_VERSION_PARENT_COLUMNS = ["routing_template_id", "routing_id", "template_id"];
 
 const PRODUCT_TABLE_CANDIDATES = ["products", "product_items", "items"];
 
@@ -713,6 +723,7 @@ const normalizeCompatibleCycles = (cycles: CycleListItem[]): ModelCompatibleCycl
 const resolveCompatibleCycles = async (
   tenantId: string,
   modelId: string,
+  versionRow: RawRow | null,
   reference: ProductionModelDetailReference,
 ) => {
   const warnings: string[] = [];
@@ -723,6 +734,106 @@ const resolveCompatibleCycles = async (
   }
 
   let cycles = catalog.cycles.filter((cycle) => cycle.productionModelId === modelId);
+
+  if (cycles.length === 0) {
+    const modelVersionIds = new Set<string>();
+    const directVersionId = readStringFromKeys(versionRow ?? {}, VERSION_ID_COLUMNS);
+    if (directVersionId) {
+      modelVersionIds.add(directVersionId);
+    }
+
+    if (modelVersionIds.size === 0) {
+      const versions = await queryTableRows("production_model_versions", tenantId);
+      if (versions.warning) {
+        warnings.push(versions.warning);
+      }
+      if (versions.exists) {
+        const relatedVersions = versions.rows.filter((row) => {
+          const parentId = readStringFromKeys(row, VERSION_PARENT_COLUMNS);
+          return parentId === modelId;
+        });
+        for (const row of relatedVersions) {
+          const rowId = readStringFromKeys(row, VERSION_ID_COLUMNS);
+          if (rowId) {
+            modelVersionIds.add(rowId);
+          }
+        }
+      }
+    }
+
+    if (modelVersionIds.size > 0) {
+      const links = await queryTableRows("production_model_version_routing_links", tenantId);
+      if (links.warning) {
+        warnings.push(links.warning);
+      }
+
+      if (links.exists) {
+        const routingTemplateIds = new Set<string>();
+        const routingTemplateVersionIds = new Set<string>();
+
+        for (const row of links.rows) {
+          const linkedVersionId = readStringFromKeys(row, ROUTING_LINK_MODEL_VERSION_COLUMNS);
+          if (!linkedVersionId || !modelVersionIds.has(linkedVersionId)) {
+            continue;
+          }
+
+          const templateId = readStringFromKeys(row, ROUTING_LINK_TEMPLATE_COLUMNS);
+          const templateVersionId = readStringFromKeys(row, ROUTING_LINK_TEMPLATE_VERSION_COLUMNS);
+
+          if (templateId) {
+            routingTemplateIds.add(templateId);
+          }
+          if (templateVersionId) {
+            routingTemplateVersionIds.add(templateVersionId);
+          }
+        }
+
+        if (routingTemplateIds.size === 0 && routingTemplateVersionIds.size > 0) {
+          const routingVersions = await queryTableRows("routing_template_versions", tenantId);
+          if (routingVersions.warning) {
+            warnings.push(routingVersions.warning);
+          }
+
+          if (routingVersions.exists) {
+            for (const row of routingVersions.rows) {
+              const versionId = readStringFromKeys(row, ROUTING_VERSION_ID_COLUMNS);
+              if (!versionId || !routingTemplateVersionIds.has(versionId)) {
+                continue;
+              }
+
+              const parentTemplateId = readStringFromKeys(row, ROUTING_VERSION_PARENT_COLUMNS);
+              if (parentTemplateId) {
+                routingTemplateIds.add(parentTemplateId);
+              }
+            }
+          }
+        }
+
+        if (routingTemplateIds.size > 0) {
+          const linkedFromCatalog = catalog.cycles.filter((cycle) =>
+            routingTemplateIds.has(cycle.id),
+          );
+          cycles = linkedFromCatalog;
+
+          if (cycles.length === 0) {
+            const byIdCycles: CycleListItem[] = [];
+            for (const templateId of routingTemplateIds) {
+              const cycleById = await getTenantCycleById(tenantId, templateId);
+              warnings.push(...cycleById.warnings);
+              if (cycleById.error) {
+                warnings.push(`Ciclo by id lookup: ${cycleById.error}`);
+              }
+              if (cycleById.cycle) {
+                byIdCycles.push(cycleById.cycle);
+              }
+            }
+            cycles = byIdCycles;
+          }
+        }
+      }
+    }
+  }
+
   if (cycles.length === 0 && reference.cycleId) {
     const singleCycle = await getTenantCycleById(tenantId, reference.cycleId);
     warnings.push(...singleCycle.warnings);
@@ -887,6 +998,7 @@ export const getTenantProductionModelDetail = async (
     const compatibleCyclesData = await resolveCompatibleCycles(
       tenantId,
       resolvedReference.modelId,
+      modelData.versionRow,
       reference,
     );
     warnings.push(...compatibleCyclesData.warnings);
