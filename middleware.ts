@@ -15,6 +15,7 @@ export async function middleware(request: NextRequest) {
   const protectedPrefixes = [
     "/dashboard",
     "/anagrafiche",
+    "/pre-industrializzazione",
     "/odp",
     "/mes",
     "/conto-lavoro",
@@ -74,6 +75,7 @@ export const config = {
     "/select-tenant",
     "/dashboard/:path*",
     "/anagrafiche/:path*",
+    "/pre-industrializzazione/:path*",
     "/odp/:path*",
     "/mes/:path*",
     "/conto-lavoro/:path*",
