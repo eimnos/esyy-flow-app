@@ -443,6 +443,9 @@ export default async function CommessaProductionPage({ params }: CommessaProduct
           <Link href={`/commesse/${resolvedParams.commessaId}/conto-lavoro`}>
             Apri conto lavoro commessa
           </Link>
+          <Link href={`/commesse/${resolvedParams.commessaId}/costi-fatturato`}>
+            Apri costi/fatturato commessa
+          </Link>
           <Link href="/odp">Apri area ODP (placeholder)</Link>
           <Link href="/mes">Apri area MES (placeholder)</Link>
           <Link href="/conto-lavoro">Apri area conto lavoro (modulo)</Link>

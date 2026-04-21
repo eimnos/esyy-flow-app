@@ -673,6 +673,9 @@ export default async function CommessaSubcontractingPage({
             <Link href={`/commesse/${resolvedParams.commessaId}/approvvigionamenti`}>
               Apri approvvigionamenti commessa
             </Link>
+            <Link href={`/commesse/${resolvedParams.commessaId}/costi-fatturato`}>
+              Apri costi/fatturato commessa
+            </Link>
           </div>
         </section>
       ) : null}
@@ -692,6 +695,9 @@ export default async function CommessaSubcontractingPage({
           <Link href={`/commesse/${resolvedParams.commessaId}/produzione`}>Apri produzione commessa</Link>
           <Link href={`/commesse/${resolvedParams.commessaId}/approvvigionamenti`}>
             Apri approvvigionamenti commessa
+          </Link>
+          <Link href={`/commesse/${resolvedParams.commessaId}/costi-fatturato`}>
+            Apri costi/fatturato commessa
           </Link>
           <Link href="/odp">Apri area ODP (placeholder)</Link>
           <Link href="/conto-lavoro">Apri area conto lavoro (placeholder)</Link>
