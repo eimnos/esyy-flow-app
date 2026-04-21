@@ -493,8 +493,11 @@ export default async function CommessaProcurementPage({
                       <Link href={`/commesse/${resolvedParams.commessaId}/produzione`}>
                         Apri produzione
                       </Link>
+                      <Link href={`/commesse/${resolvedParams.commessaId}/conto-lavoro`}>
+                        Apri conto lavoro commessa
+                      </Link>
                       <Link href="/mes">Apri MES (placeholder)</Link>
-                      <Link href="/conto-lavoro">Apri conto lavoro (placeholder)</Link>
+                      <Link href="/conto-lavoro">Apri area conto lavoro (modulo)</Link>
                     </div>
                   </td>
                 </tr>
@@ -539,9 +542,12 @@ export default async function CommessaProcurementPage({
           <Link href={`/commesse/${resolvedParams.commessaId}`}>Torna a overview commessa</Link>
           <Link href={`/commesse/${resolvedParams.commessaId}/documenti`}>Apri documenti commessa</Link>
           <Link href={`/commesse/${resolvedParams.commessaId}/produzione`}>Apri produzione commessa</Link>
+          <Link href={`/commesse/${resolvedParams.commessaId}/conto-lavoro`}>
+            Apri conto lavoro commessa
+          </Link>
           <Link href="/odp">Apri area ODP (placeholder)</Link>
           <Link href="/mes">Apri area MES (placeholder)</Link>
-          <Link href="/conto-lavoro">Apri area conto lavoro (placeholder)</Link>
+          <Link href="/conto-lavoro">Apri area conto lavoro (modulo)</Link>
         </div>
       </section>
 
