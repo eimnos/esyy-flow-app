@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type CommessaDetailTabKey = "overview" | "documenti" | "produzione";
+type CommessaDetailTabKey = "overview" | "documenti" | "produzione" | "approvvigionamenti";
 
 type CommessaDetailTabsProps = {
   commessaId: string;
@@ -11,6 +11,7 @@ const tabs: Array<{ key: CommessaDetailTabKey; label: string }> = [
   { key: "overview", label: "Overview" },
   { key: "documenti", label: "Documenti" },
   { key: "produzione", label: "Produzione" },
+  { key: "approvvigionamenti", label: "Approvvigionamenti" },
 ];
 
 export function CommessaDetailTabs({ commessaId, activeTab }: CommessaDetailTabsProps) {
@@ -24,7 +25,9 @@ export function CommessaDetailTabs({ commessaId, activeTab }: CommessaDetailTabs
             ? baseHref
             : tab.key === "documenti"
               ? `${baseHref}/documenti`
-              : `${baseHref}/produzione`;
+              : tab.key === "produzione"
+                ? `${baseHref}/produzione`
+                : `${baseHref}/approvvigionamenti`;
         const selected = activeTab === tab.key;
 
         return (
