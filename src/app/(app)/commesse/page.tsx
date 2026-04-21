@@ -290,6 +290,8 @@ export default async function CommessePage({ searchParams }: CommessePageProps) 
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                     <Link href={`/commesse/${commessa.id}`}>Dettaglio</Link>
+                    <Link href={`/commesse/${commessa.id}/documenti`}>Documenti</Link>
+                    <Link href={`/commesse/${commessa.id}/produzione`}>Produzione</Link>
                     <Link href="/odp">ODP</Link>
                   </div>
                 </td>

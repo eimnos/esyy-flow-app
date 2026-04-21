@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { CommessaDetailTabs } from "@/app/(app)/commesse/_components/commessa-detail-tabs";
 import { getTenantCommessaOverviewById, type CommessaOverviewIssue } from "@/lib/domain/commesse";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
@@ -111,6 +112,8 @@ export default async function CommessaDetailPage({ params }: CommessaDetailPageP
         </div>
         <Link href="/commesse">Torna all&apos;elenco commesse</Link>
       </header>
+
+      <CommessaDetailTabs commessaId={resolvedParams.commessaId} activeTab="overview" />
 
       {overview.error ? (
         <p
@@ -377,6 +380,12 @@ export default async function CommessaDetailPage({ params }: CommessaDetailPageP
             <strong>Accessi rapidi</strong>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <Link href="/commesse">Torna all&apos;elenco commesse</Link>
+              <Link href={`/commesse/${resolvedParams.commessaId}/documenti`}>
+                Apri documenti commessa
+              </Link>
+              <Link href={`/commesse/${resolvedParams.commessaId}/produzione`}>
+                Apri produzione commessa
+              </Link>
               {overview.commessa.productId ? (
                 <Link href={`/anagrafiche/articoli-prodotto/${overview.commessa.productId}`}>
                   Articolo collegato
