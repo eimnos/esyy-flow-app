@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type CommessaDetailTabKey = "overview" | "documenti";
+type CommessaDetailTabKey = "overview" | "documenti" | "produzione";
 
 type CommessaDetailTabsProps = {
   commessaId: string;
@@ -10,6 +10,7 @@ type CommessaDetailTabsProps = {
 const tabs: Array<{ key: CommessaDetailTabKey; label: string }> = [
   { key: "overview", label: "Overview" },
   { key: "documenti", label: "Documenti" },
+  { key: "produzione", label: "Produzione" },
 ];
 
 export function CommessaDetailTabs({ commessaId, activeTab }: CommessaDetailTabsProps) {
@@ -18,7 +19,12 @@ export function CommessaDetailTabs({ commessaId, activeTab }: CommessaDetailTabs
   return (
     <nav aria-label="Sezioni dettaglio commessa" style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
       {tabs.map((tab) => {
-        const href = tab.key === "overview" ? baseHref : `${baseHref}/documenti`;
+        const href =
+          tab.key === "overview"
+            ? baseHref
+            : tab.key === "documenti"
+              ? `${baseHref}/documenti`
+              : `${baseHref}/produzione`;
         const selected = activeTab === tab.key;
 
         return (

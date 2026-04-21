@@ -291,6 +291,7 @@ export default async function CommessePage({ searchParams }: CommessePageProps) 
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                     <Link href={`/commesse/${commessa.id}`}>Dettaglio</Link>
                     <Link href={`/commesse/${commessa.id}/documenti`}>Documenti</Link>
+                    <Link href={`/commesse/${commessa.id}/produzione`}>Produzione</Link>
                     <Link href="/odp">ODP</Link>
                   </div>
                 </td>

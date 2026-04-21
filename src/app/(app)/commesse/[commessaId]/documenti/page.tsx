@@ -428,6 +428,9 @@ export default async function CommessaDocumentsPage({
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <Link href={`/commesse/${resolvedParams.commessaId}/documenti`}>Reset filtri</Link>
               <Link href={`/commesse/${resolvedParams.commessaId}`}>Torna a overview</Link>
+              <Link href={`/commesse/${resolvedParams.commessaId}/produzione`}>
+                Apri produzione commessa
+              </Link>
               <Link href="/odp">Apri area ODP (placeholder)</Link>
             </div>
           </section>
