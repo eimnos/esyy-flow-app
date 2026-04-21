@@ -437,9 +437,15 @@ export default async function CommessaProductionPage({ params }: CommessaProduct
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <Link href={`/commesse/${resolvedParams.commessaId}`}>Torna a overview commessa</Link>
           <Link href={`/commesse/${resolvedParams.commessaId}/documenti`}>Apri documenti commessa</Link>
+          <Link href={`/commesse/${resolvedParams.commessaId}/approvvigionamenti`}>
+            Apri approvvigionamenti commessa
+          </Link>
+          <Link href={`/commesse/${resolvedParams.commessaId}/conto-lavoro`}>
+            Apri conto lavoro commessa
+          </Link>
           <Link href="/odp">Apri area ODP (placeholder)</Link>
           <Link href="/mes">Apri area MES (placeholder)</Link>
-          <Link href="/conto-lavoro">Apri area conto lavoro (placeholder)</Link>
+          <Link href="/conto-lavoro">Apri area conto lavoro (modulo)</Link>
         </div>
       </section>
 

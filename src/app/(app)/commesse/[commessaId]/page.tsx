@@ -386,6 +386,12 @@ export default async function CommessaDetailPage({ params }: CommessaDetailPageP
               <Link href={`/commesse/${resolvedParams.commessaId}/produzione`}>
                 Apri produzione commessa
               </Link>
+              <Link href={`/commesse/${resolvedParams.commessaId}/approvvigionamenti`}>
+                Apri approvvigionamenti commessa
+              </Link>
+              <Link href={`/commesse/${resolvedParams.commessaId}/conto-lavoro`}>
+                Apri conto lavoro commessa
+              </Link>
               {overview.commessa.productId ? (
                 <Link href={`/anagrafiche/articoli-prodotto/${overview.commessa.productId}`}>
                   Articolo collegato
