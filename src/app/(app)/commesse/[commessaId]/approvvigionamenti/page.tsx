@@ -527,6 +527,9 @@ export default async function CommessaProcurementPage({
               <Link href={`/commesse/${resolvedParams.commessaId}/costi-fatturato`}>
                 Apri costi/fatturato commessa
               </Link>
+              <Link href={`/commesse/${resolvedParams.commessaId}/tracciabilita`}>
+                Apri tracciabilita commessa
+              </Link>
             </div>
           </section>
         ) : null}
@@ -550,6 +553,9 @@ export default async function CommessaProcurementPage({
           </Link>
           <Link href={`/commesse/${resolvedParams.commessaId}/costi-fatturato`}>
             Apri costi/fatturato commessa
+          </Link>
+          <Link href={`/commesse/${resolvedParams.commessaId}/tracciabilita`}>
+            Apri tracciabilita commessa
           </Link>
           <Link href="/odp">Apri area ODP (placeholder)</Link>
           <Link href="/mes">Apri area MES (placeholder)</Link>

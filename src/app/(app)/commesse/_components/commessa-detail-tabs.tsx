@@ -6,7 +6,8 @@ type CommessaDetailTabKey =
   | "produzione"
   | "approvvigionamenti"
   | "conto-lavoro"
-  | "costi-fatturato";
+  | "costi-fatturato"
+  | "tracciabilita";
 
 type CommessaDetailTabsProps = {
   commessaId: string;
@@ -20,6 +21,7 @@ const tabs: Array<{ key: CommessaDetailTabKey; label: string }> = [
   { key: "approvvigionamenti", label: "Approvvigionamenti" },
   { key: "conto-lavoro", label: "Conto lavoro" },
   { key: "costi-fatturato", label: "Costi/Fatturato" },
+  { key: "tracciabilita", label: "Tracciabilita" },
 ];
 
 export function CommessaDetailTabs({ commessaId, activeTab }: CommessaDetailTabsProps) {
@@ -39,7 +41,9 @@ export function CommessaDetailTabs({ commessaId, activeTab }: CommessaDetailTabs
               ? `${baseHref}/approvvigionamenti`
             : tab.key === "conto-lavoro"
               ? `${baseHref}/conto-lavoro`
-              : `${baseHref}/costi-fatturato`;
+            : tab.key === "costi-fatturato"
+              ? `${baseHref}/costi-fatturato`
+              : `${baseHref}/tracciabilita`;
         const selected = activeTab === tab.key;
 
         return (

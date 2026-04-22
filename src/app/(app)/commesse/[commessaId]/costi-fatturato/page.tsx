@@ -455,6 +455,9 @@ export default async function CommessaEconomicsPage({
           <Link href={`/commesse/${resolvedParams.commessaId}/conto-lavoro`}>
             Apri conto lavoro commessa
           </Link>
+          <Link href={`/commesse/${resolvedParams.commessaId}/tracciabilita`}>
+            Apri tracciabilita commessa
+          </Link>
           <Link href="/odp">Apri area ODP (placeholder)</Link>
         </div>
       </section>
