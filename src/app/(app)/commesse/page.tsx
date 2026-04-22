@@ -294,6 +294,8 @@ export default async function CommessePage({ searchParams }: CommessePageProps) 
                     <Link href={`/commesse/${commessa.id}/produzione`}>Produzione</Link>
                     <Link href={`/commesse/${commessa.id}/approvvigionamenti`}>Approvvigionamenti</Link>
                     <Link href={`/commesse/${commessa.id}/conto-lavoro`}>Conto lavoro</Link>
+                    <Link href={`/commesse/${commessa.id}/costi-fatturato`}>Costi/Fatturato</Link>
+                    <Link href={`/commesse/${commessa.id}/tracciabilita`}>Tracciabilita</Link>
                     <Link href="/odp">ODP</Link>
                   </div>
                 </td>
