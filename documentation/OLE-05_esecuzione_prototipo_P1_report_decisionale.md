@@ -9,10 +9,10 @@
 ## 1. Ambiente effettivamente usato
 - **Ambiente SAP:** SAP Business One test locale / rete interna cliente
 - **Canale integrazione testato:** SAP Business One Service Layer
-- **Root usato:** `https://win-nsichqot7rv.v-tronik.locale:50000/b1s/v2`
+- **Root usato:** `https://<sap-b1-test-host>:50000/b1s/v2`
 - **Modalità di esecuzione:** Postman Desktop / agent locale, non cloud
-- **Utente SAP usato:** `manager`
-- **CompanyDB usato:** `SB02643_VTK`
+- **Utente SAP usato:** `<sap_test_user>`
+- **CompanyDB usato:** `<company_db_test>`
 - **Hostname:** privato `.locale`, raggiungibile solo da rete locale / contesto interno
 
 ## 2. Prerequisiti confermati o mancanti
@@ -46,9 +46,9 @@ POST /b1s/v2/Login
 Content-Type: application/json
 
 {
-  "CompanyDB": "SB02643_VTK",
-  "UserName": "manager",
-  "Password": "wizard"
+  "CompanyDB": "<company_db_test>",
+  "UserName": "<sap_test_user>",
+  "Password": "<sap_test_password>"
 }
 ```
 
@@ -57,20 +57,20 @@ Content-Type: application/json
 - Body rilevante:
 ```json
 {
-  "SessionId": "a2d816ea-3d94-11f1-8000-d4f5ef3ac620",
+  "SessionId": "<session_id_masked>",
   "Version": "1000191",
   "SessionTimeout": 30
 }
 ```
 - Cookie rilevanti:
-  - `B1SESSION=bf0f752e-3d94-11f1-8000-d4f5ef3ac620`
-  - `ROUTEID=.node5`
+  - `B1SESSION=<b1session_masked>`
+  - `ROUTEID=<routeid_masked>`
 
 ### 3.2 Metadata
 **Request**
 ```http
 GET /b1s/v2/$metadata
-Cookie: B1SESSION=...; ROUTEID=.node5
+Cookie: B1SESSION=...; ROUTEID=<routeid_masked>
 ```
 
 **Response**
@@ -100,7 +100,7 @@ GET /b1s/v2/ProductTrees('FG_P1_ODP_TEST')
 ```http
 POST /b1s/v2/ProductionOrders
 Content-Type: application/json
-Cookie: B1SESSION=...; ROUTEID=.node5
+Cookie: B1SESSION=...; ROUTEID=<routeid_masked>
 
 {
   "DueDate": "2026-04-25",
@@ -131,7 +131,7 @@ Cookie: B1SESSION=...; ROUTEID=.node5
 **Request**
 ```http
 GET /b1s/v2/ProductionOrders(3585)?$select=AbsoluteEntry,DocumentNumber,Series,ItemNo,PlannedQuantity,DueDate,PostingDate,StartDate,ProductionOrderStatus,ProductionOrderOrigin,Warehouse,Remarks
-Cookie: B1SESSION=...; ROUTEID=.node5
+Cookie: B1SESSION=...; ROUTEID=<routeid_masked>
 ```
 
 **Response**
@@ -155,7 +155,7 @@ Cookie: B1SESSION=...; ROUTEID=.node5
 ```http
 PATCH /b1s/v2/ProductionOrders(3585)
 Content-Type: application/json
-Cookie: B1SESSION=...; ROUTEID=.node5
+Cookie: B1SESSION=...; ROUTEID=<routeid_masked>
 
 {
   "ProductionOrderStatus": "boposReleased",
@@ -171,7 +171,7 @@ Cookie: B1SESSION=...; ROUTEID=.node5
 **Request**
 ```http
 GET /b1s/v2/ProductionOrders(3585)?$select=AbsoluteEntry,DocumentNumber,Series,ProductionOrderStatus,Remarks,Warehouse,ItemNo
-Cookie: B1SESSION=...; ROUTEID=.node5
+Cookie: B1SESSION=...; ROUTEID=<routeid_masked>
 ```
 
 **Response**
@@ -193,7 +193,7 @@ Cookie: B1SESSION=...; ROUTEID=.node5
 **Request**
 ```http
 POST /b1s/v2/Logout
-Cookie: B1SESSION=...; ROUTEID=.node5
+Cookie: B1SESSION=...; ROUTEID=<routeid_masked>
 ```
 
 **Response**
