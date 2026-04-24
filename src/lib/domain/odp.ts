@@ -2255,3 +2255,534 @@ export const getTenantOdpMaterials = async (
     };
   }
 };
+
+export type OdpCockpitNodeKind = "odp" | "phase" | "material" | "event";
+export type OdpCockpitSignal =
+  | "delay"
+  | "blocked"
+  | "external"
+  | "critical_material"
+  | "quality";
+
+export type OdpCockpitLink = {
+  key: "detail" | "phases" | "materials" | "subcontracting" | "traceability" | "fallback";
+  label: string;
+  href: string;
+};
+
+export type OdpCockpitMetric = {
+  label: string;
+  value: string;
+};
+
+export type OdpCockpitNode = {
+  id: string;
+  parentId: string | null;
+  kind: OdpCockpitNodeKind;
+  label: string;
+  secondaryLabel: string | null;
+  status: string | null;
+  progressPct: number | null;
+  signals: OdpCockpitSignal[];
+  metrics: OdpCockpitMetric[];
+  detailLines: string[];
+  links: OdpCockpitLink[];
+  sourceTable: string | null;
+  sortOrder: number;
+};
+
+export type OdpCockpitResult = {
+  order: OdpListItem | null;
+  rootNodeId: string | null;
+  nodes: OdpCockpitNode[];
+  counts: {
+    phases: number;
+    materials: number;
+    events: number;
+  };
+  sourceTables: string[];
+  warnings: string[];
+  emptyStateHint: string | null;
+  error: string | null;
+  fallbackViews: {
+    detail: string;
+    phases: string;
+    materials: string;
+    subcontracting: string;
+    traceability: string;
+  };
+};
+
+const formatCockpitPercent = (value: number | null) => {
+  if (value === null || !Number.isFinite(value)) {
+    return "N/D";
+  }
+  return `${Math.round(value)}%`;
+};
+
+const formatCockpitQty = (value: number | null) => {
+  if (value === null || !Number.isFinite(value)) {
+    return "N/D";
+  }
+  return value.toLocaleString("it-IT", { maximumFractionDigits: 3 });
+};
+
+const formatCockpitDate = (value: string | null) => {
+  if (!value) {
+    return "N/D";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString("it-IT", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+};
+
+const normalizeSignalList = (signals: OdpCockpitSignal[]) => {
+  const unique = new Set<OdpCockpitSignal>(signals);
+  return [...unique];
+};
+
+const dedupeWarnings = (warnings: string[]) => [...new Set(warnings.filter(Boolean))];
+
+const buildCockpitFallbackViews = (order: OdpListItem | null, odpId: string) => ({
+  detail: `/odp/${odpId}`,
+  phases: `/odp/${odpId}/fasi`,
+  materials: `/odp/${odpId}/materiali`,
+  subcontracting: order?.commessaId
+    ? `/commesse/${order.commessaId}/conto-lavoro`
+    : `/odp/${odpId}?section=conto-lavoro`,
+  traceability: order?.commessaId ? `/commesse/${order.commessaId}/tracciabilita` : "/commesse",
+});
+
+const safeContains = (value: string, query: string) =>
+  value.toLowerCase().includes(query.toLowerCase());
+
+const materialIsCritical = (material: OdpMaterialItem) =>
+  (material.differenceQty ?? 0) > 0 || material.hasManualChange || material.hasSubstitution;
+
+type CockpitNodeInput = Omit<OdpCockpitNode, "sortOrder">;
+
+const buildCockpitNodes = (
+  order: OdpListItem,
+  phases: OdpPhaseResult,
+  materials: OdpMaterialResult,
+  fallbackViews: OdpCockpitResult["fallbackViews"],
+) => {
+  const nodes: OdpCockpitNode[] = [];
+  let sortOrder = 0;
+
+  const addNode = (node: CockpitNodeInput) => {
+    const withOrder: OdpCockpitNode = { ...node, sortOrder };
+    sortOrder += 1;
+    nodes.push(withOrder);
+    return withOrder.id;
+  };
+
+  const rootId = `odp:${order.id}`;
+  const rootSignals: OdpCockpitSignal[] = [];
+  if (order.isDelayed) {
+    rootSignals.push("delay");
+  }
+  if (order.isBlocked) {
+    rootSignals.push("blocked");
+  }
+  if (phases.phases.some((phase) => phase.isExternal === true)) {
+    rootSignals.push("external");
+  }
+  if (phases.phases.some((phase) => phase.hasQuality === true)) {
+    rootSignals.push("quality");
+  }
+  if (materials.items.some(materialIsCritical)) {
+    rootSignals.push("critical_material");
+  }
+
+  addNode({
+    id: rootId,
+    parentId: null,
+    kind: "odp",
+    label: order.code,
+    secondaryLabel: order.name,
+    status: order.status,
+    progressPct: order.progressPct,
+    signals: normalizeSignalList(rootSignals),
+    metrics: [
+      { label: "Avanzamento", value: formatCockpitPercent(order.progressPct) },
+      {
+        label: "Ritardo",
+        value: order.isDelayed
+          ? `Si${order.delayDays !== null ? ` (${Math.floor(order.delayDays)} gg)` : ""}`
+          : "No",
+      },
+      {
+        label: "Blocco",
+        value: order.isBlocked ? "Si" : "No",
+      },
+      {
+        label: "Qt residua",
+        value: formatCockpitQty(order.qtyResidual),
+      },
+    ],
+    detailLines: [
+      `Stato: ${order.status}`,
+      `Origine: ${order.origin}`,
+      `Commessa: ${order.commessaCode ?? order.commessaId ?? "N/D"}`,
+      `Fine prevista: ${formatCockpitDate(order.dueDate)}`,
+      `Sorgente: ${order.sourceTable}`,
+    ],
+    links: [
+      { key: "detail", label: "D", href: fallbackViews.detail },
+      { key: "phases", label: "F", href: fallbackViews.phases },
+      { key: "materials", label: "M", href: fallbackViews.materials },
+      { key: "subcontracting", label: "CL", href: fallbackViews.subcontracting },
+      { key: "traceability", label: "TR", href: fallbackViews.traceability },
+    ],
+    sourceTable: order.sourceTable,
+  });
+
+  const phaseNodeIdByCode = new Map<string, string>();
+  const phaseNodeIdById = new Map<string, string>();
+
+  phases.phases.forEach((phase, index) => {
+    const phaseId = `phase:${phase.id}:${index + 1}`;
+    const phaseSignals: OdpCockpitSignal[] = [];
+    if (phase.isDelayed) {
+      phaseSignals.push("delay");
+    }
+    if (phase.isBlocked) {
+      phaseSignals.push("blocked");
+    }
+    if (phase.isExternal === true) {
+      phaseSignals.push("external");
+    }
+    if (phase.hasQuality === true) {
+      phaseSignals.push("quality");
+    }
+
+    addNode({
+      id: phaseId,
+      parentId: rootId,
+      kind: "phase",
+      label: phase.phaseCode,
+      secondaryLabel: phase.phaseName,
+      status: phase.status,
+      progressPct: phase.progressPct,
+      signals: normalizeSignalList(phaseSignals),
+      metrics: [
+        { label: "Avanz.", value: formatCockpitPercent(phase.progressPct) },
+        { label: "Ritardo", value: phase.isDelayed ? "Si" : "No" },
+        { label: "Blocco", value: phase.isBlocked ? "Si" : "No" },
+      ],
+      detailLines: [
+        `Numero fase: ${phase.phaseNo ?? "N/D"}`,
+        `Tipo fase: ${phase.isExternal === true ? "Esterna" : phase.isExternal === false ? "Interna" : "N/D"}`,
+        `Qualita: ${phase.hasQuality === true ? "Si" : phase.hasQuality === false ? "No" : "N/D"}`,
+        `Scadenza: ${formatCockpitDate(phase.dueDate)}`,
+        `Sorgente: ${phase.sourceTable}`,
+      ],
+      links: [
+        { key: "detail", label: "D", href: fallbackViews.detail },
+        { key: "phases", label: "F", href: fallbackViews.phases },
+        { key: "materials", label: "M", href: fallbackViews.materials },
+        { key: "subcontracting", label: "CL", href: fallbackViews.subcontracting },
+      ],
+      sourceTable: phase.sourceTable,
+    });
+
+    phaseNodeIdById.set(phase.id, phaseId);
+    const codeKey = phase.phaseCode.trim().toLowerCase();
+    if (codeKey && !phaseNodeIdByCode.has(codeKey)) {
+      phaseNodeIdByCode.set(codeKey, phaseId);
+    }
+  });
+
+  const materialNodeIdByItemId = new Map<string, string>();
+
+  materials.items.forEach((material, index) => {
+    let parentId = rootId;
+    const externalPhaseCode = material.externalPhaseCode?.trim().toLowerCase() ?? "";
+    if (externalPhaseCode) {
+      const matched = phaseNodeIdByCode.get(externalPhaseCode);
+      if (matched) {
+        parentId = matched;
+      } else {
+        for (const [phaseCode, phaseNodeId] of phaseNodeIdByCode.entries()) {
+          if (
+            safeContains(externalPhaseCode, phaseCode) ||
+            safeContains(phaseCode, externalPhaseCode)
+          ) {
+            parentId = phaseNodeId;
+            break;
+          }
+        }
+      }
+    }
+
+    const materialSignals: OdpCockpitSignal[] = [];
+    if (materialIsCritical(material)) {
+      materialSignals.push("critical_material");
+    }
+    if (material.externalPhaseCode || material.subcontractingCode) {
+      materialSignals.push("external");
+    }
+
+    const materialNodeId = `material:${material.id}:${index + 1}`;
+    addNode({
+      id: materialNodeId,
+      parentId,
+      kind: "material",
+      label: material.materialCode,
+      secondaryLabel: material.materialName,
+      status: material.status,
+      progressPct: null,
+      signals: normalizeSignalList(materialSignals),
+      metrics: [
+        { label: "Teorico", value: formatCockpitQty(material.theoreticalQty) },
+        { label: "Prelevato", value: formatCockpitQty(material.pickedQty) },
+        { label: "Consumato", value: formatCockpitQty(material.consumedQty) },
+        { label: "Diff.", value: formatCockpitQty(material.differenceQty) },
+      ],
+      detailLines: [
+        `UM: ${material.uom ?? "N/D"}`,
+        `Lotto: ${material.lotCode ?? "N/D"}`,
+        `Fase esterna: ${material.externalPhaseCode ?? "N/D"}`,
+        `Conto lavoro: ${material.subcontractingCode ?? "N/D"}`,
+        `Nota: ${material.note ?? "N/D"}`,
+        `Sorgente: ${material.sourceTable}`,
+      ],
+      links: [
+        { key: "detail", label: "D", href: fallbackViews.detail },
+        { key: "materials", label: "M", href: fallbackViews.materials },
+        { key: "phases", label: "F", href: fallbackViews.phases },
+        { key: "subcontracting", label: "CL", href: fallbackViews.subcontracting },
+      ],
+      sourceTable: material.sourceTable,
+    });
+
+    materialNodeIdByItemId.set(material.id, materialNodeId);
+  });
+
+  phases.timeline.forEach((event, index) => {
+    let parentId = rootId;
+    for (const phase of phases.phases) {
+      const phaseCode = phase.phaseCode.trim();
+      if (!phaseCode) {
+        continue;
+      }
+      if (safeContains(event.title, phaseCode) || safeContains(event.detail, phaseCode)) {
+        const mappedId = phaseNodeIdByCode.get(phaseCode.toLowerCase());
+        if (mappedId) {
+          parentId = mappedId;
+        }
+        break;
+      }
+      const mappedById = phaseNodeIdById.get(phase.id);
+      if (
+        mappedById &&
+        (safeContains(event.title, phase.id) || safeContains(event.detail, phase.id))
+      ) {
+        parentId = mappedById;
+        break;
+      }
+    }
+
+    addNode({
+      id: `event:phase:${event.id}:${index + 1}`,
+      parentId,
+      kind: "event",
+      label: event.title,
+      secondaryLabel: event.detail,
+      status: null,
+      progressPct: null,
+      signals: [],
+      metrics: [{ label: "Quando", value: formatCockpitDate(event.at) }],
+      detailLines: [
+        `Evento: ${event.title}`,
+        `Dettaglio: ${event.detail}`,
+        `Data: ${formatCockpitDate(event.at)}`,
+        `Sorgente: ${event.sourceTable}`,
+      ],
+      links: [
+        { key: "phases", label: "F", href: fallbackViews.phases },
+        { key: "detail", label: "D", href: fallbackViews.detail },
+      ],
+      sourceTable: event.sourceTable,
+    });
+  });
+
+  materials.items.forEach((material, index) => {
+    if (!material.hasLots && !material.subcontractingCode && !material.externalPhaseCode) {
+      return;
+    }
+    const parentId = materialNodeIdByItemId.get(material.id) ?? rootId;
+    const movementLabel = material.lotCode
+      ? `Movimento lotto ${material.lotCode}`
+      : material.subcontractingCode
+        ? `Movimento conto lavoro ${material.subcontractingCode}`
+        : `Movimento ${material.materialCode}`;
+    const movementSignals: OdpCockpitSignal[] = [];
+    if (material.subcontractingCode || material.externalPhaseCode) {
+      movementSignals.push("external");
+    }
+    if (materialIsCritical(material)) {
+      movementSignals.push("critical_material");
+    }
+
+    addNode({
+      id: `event:material:${material.id}:${index + 1}`,
+      parentId,
+      kind: "event",
+      label: movementLabel,
+      secondaryLabel: material.materialName,
+      status: null,
+      progressPct: null,
+      signals: normalizeSignalList(movementSignals),
+      metrics: [{ label: "Diff.", value: formatCockpitQty(material.differenceQty) }],
+      detailLines: [
+        `Materiale: ${material.materialCode} - ${material.materialName}`,
+        `Lotto: ${material.lotCode ?? "N/D"}`,
+        `Conto lavoro: ${material.subcontractingCode ?? "N/D"}`,
+        `Fase esterna: ${material.externalPhaseCode ?? "N/D"}`,
+      ],
+      links: [
+        { key: "materials", label: "M", href: fallbackViews.materials },
+        { key: "subcontracting", label: "CL", href: fallbackViews.subcontracting },
+      ],
+      sourceTable: material.sourceTable,
+    });
+  });
+
+  return {
+    rootId,
+    nodes,
+    counts: {
+      phases: phases.phases.length,
+      materials: materials.items.length,
+      events: nodes.filter((node) => node.kind === "event").length,
+    },
+  };
+};
+
+export const getTenantOdpCockpit = async (
+  tenantId: string,
+  odpId: string,
+): Promise<OdpCockpitResult> => {
+  const fallbackViews = buildCockpitFallbackViews(null, odpId);
+  if (!tenantId || !odpId) {
+    return {
+      order: null,
+      rootNodeId: null,
+      nodes: [],
+      counts: { phases: 0, materials: 0, events: 0 },
+      sourceTables: [],
+      warnings: [],
+      emptyStateHint: null,
+      error: "Parametri non validi.",
+      fallbackViews,
+    };
+  }
+
+  try {
+    const [detail, phases, materials] = await Promise.all([
+      getTenantOdpById(tenantId, odpId),
+      getTenantOdpPhases(tenantId, odpId, {
+        q: "",
+        status: "all",
+        delay: "all",
+        blocked: "all",
+        external: "all",
+        quality: "all",
+      }),
+      getTenantOdpMaterials(tenantId, odpId, {
+        q: "",
+        status: "all",
+        difference: "all",
+        manual: "all",
+        substitution: "all",
+        lots: "all",
+        externalLink: "all",
+      }),
+    ]);
+
+    const resolvedFallbackViews = buildCockpitFallbackViews(detail.order, odpId);
+    const sourceTables = new Set<string>();
+    if (detail.sourceTable) {
+      sourceTables.add(detail.sourceTable);
+    }
+    phases.sourceTables.forEach((table) => sourceTables.add(table));
+    materials.sourceTables.forEach((table) => sourceTables.add(table));
+
+    const warnings = dedupeWarnings([
+      ...detail.warnings,
+      ...phases.warnings,
+      ...materials.warnings,
+    ]);
+
+    const firstError = detail.error ?? phases.error ?? materials.error;
+    if (firstError) {
+      return {
+        order: detail.order,
+        rootNodeId: null,
+        nodes: [],
+        counts: { phases: 0, materials: 0, events: 0 },
+        sourceTables: [...sourceTables].sort((left, right) => left.localeCompare(right, "it")),
+        warnings,
+        emptyStateHint: null,
+        error: firstError,
+        fallbackViews: resolvedFallbackViews,
+      };
+    }
+
+    if (!detail.order) {
+      return {
+        order: null,
+        rootNodeId: null,
+        nodes: [],
+        counts: { phases: 0, materials: 0, events: 0 },
+        sourceTables: [...sourceTables].sort((left, right) => left.localeCompare(right, "it")),
+        warnings,
+        emptyStateHint:
+          detail.emptyStateHint ??
+          "ODP non disponibile nel tenant corrente con il mapping dati attuale.",
+        error: null,
+        fallbackViews: resolvedFallbackViews,
+      };
+    }
+
+    const built = buildCockpitNodes(detail.order, phases, materials, resolvedFallbackViews);
+    const hasChildren = built.nodes.some((node) => node.parentId === built.rootId);
+    const emptyStateHint =
+      hasChildren
+        ? null
+        : phases.emptyStateHint ??
+          materials.emptyStateHint ??
+          "Cockpit disponibile ma senza nodi figli nel dataset corrente.";
+
+    return {
+      order: detail.order,
+      rootNodeId: built.rootId,
+      nodes: built.nodes,
+      counts: built.counts,
+      sourceTables: [...sourceTables].sort((left, right) => left.localeCompare(right, "it")),
+      warnings,
+      emptyStateHint,
+      error: null,
+      fallbackViews: resolvedFallbackViews,
+    };
+  } catch (caughtError) {
+    return {
+      order: null,
+      rootNodeId: null,
+      nodes: [],
+      counts: { phases: 0, materials: 0, events: 0 },
+      sourceTables: [],
+      warnings: [],
+      emptyStateHint: null,
+      error: caughtError instanceof Error ? caughtError.message : "Errore inatteso.",
+      fallbackViews,
+    };
+  }
+};

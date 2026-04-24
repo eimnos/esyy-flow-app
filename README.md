@@ -184,6 +184,7 @@ src/
     (app)/anagrafiche/elenco-distinte-ciclo/[cycleId]/modello/page.tsx
     (app)/odp/page.tsx
     (app)/odp/[odpId]/page.tsx
+    (app)/odp/[odpId]/cockpit-tree-grid.tsx
     (app)/odp/[odpId]/fasi/page.tsx
     (app)/odp/[odpId]/materiali/page.tsx
     (app)/mes/page.tsx
@@ -374,3 +375,17 @@ cd esyy-flow-app
 - evidenza di modifiche manuali, sostituzioni, lotti e collegamenti verso fase esterna/conto lavoro dove disponibili
 - filtri base su ricerca, stato, differenza, manuale, sostituzione, lotti e link esterni
 - quick link coerenti verso dettaglio ODP, fasi ODP e conto lavoro (placeholder dove il dominio non espone ancora tutto)
+
+## Scope MD-ODP-Cockpit-01
+
+- evoluzione di `/odp/[odpId]` in cockpit ODP unificato tree-grid (baseline AF-ODP-Tree-01 + UX-ODP-Tree-01)
+- testata ODP sempre visibile con stato sintetico e indicatori principali
+- gerarchia a nodi con drill-down progressivo: ODP -> fasi -> materiali -> movimenti/eventi collegati
+- click riga come interazione primaria per selezione ed espansione/collasso
+- drawer laterale in sovraimpressione per dettaglio nodo selezionato
+- segnali nativi in griglia: ritardo, blocco, fase esterna, materiale critico, qualita (dove disponibile)
+- rimandi rapidi a conto lavoro, tracciabilita e viste correlate
+- fallback esplicito mantenuto verso viste esistenti:
+  - `/odp/[odpId]/fasi`
+  - `/odp/[odpId]/materiali`
+  - viste collegate commessa (conto lavoro / tracciabilita) quando disponibili
