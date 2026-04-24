@@ -183,6 +183,7 @@ src/
     (app)/anagrafiche/elenco-distinte-ciclo/[cycleId]/page.tsx
     (app)/anagrafiche/elenco-distinte-ciclo/[cycleId]/modello/page.tsx
     (app)/odp/page.tsx
+    (app)/odp/[odpId]/page.tsx
     (app)/mes/page.tsx
     (app)/conto-lavoro/page.tsx
     api/health/route.ts
@@ -204,6 +205,7 @@ src/
     domain/diba-detail.ts
     domain/cycles.ts
     domain/cycle-detail.ts
+    domain/odp.ts
 middleware.ts
 ```
 
@@ -338,3 +340,19 @@ cd esyy-flow-app
 - lettura fase: reparto/centro/terzista, tipo fase, qualita, tempi standard, setup, risorse parallele, stato/versione
 - dettaglio fase read-only con modalita tempo, capacita/simulazione, regole operative, evidenza fase esterna e controlli qualita
 - nessun editing completo ciclo, nessuna vista grafica editabile, nessuna variazione strutturale DB autonoma
+
+## Scope MD-22
+
+- Ordini di Produzione > Elenco ODP read-only tenant-scoped su `/odp`
+- filtri base: ricerca, stato, ritardo, criticita, legame commessa, origine
+- evidenza operativa in elenco: avanzamento, ritardo, criticita, legame con commessa, origine, conteggio fasi
+- quick link riga verso dettaglio ODP, fasi, materiali e conto lavoro (con fallback placeholder)
+- placeholder strutturato dettaglio ODP su `/odp/[odpId]` in attesa di MD-23
+
+## Scope MD-23
+
+- evoluzione `/odp/[odpId]` da placeholder a dettaglio ODP read-only
+- testata ODP con stato, avanzamento, origine e sorgente dati
+- blocchi sintetici per quantita/date/criticita e legame commessa
+- accessi rapidi verso fasi, materiali e conto lavoro (con fallback placeholder dove necessario)
+- nessun editing operativo e nessuna logica MES introdotta in questa wave
