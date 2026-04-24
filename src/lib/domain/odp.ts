@@ -2364,6 +2364,12 @@ const safeContains = (value: string, query: string) =>
 const materialIsCritical = (material: OdpMaterialItem) =>
   (material.differenceQty ?? 0) > 0 || material.hasManualChange || material.hasSubstitution;
 
+const normalizeLookupToken = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
 type CockpitNodeInput = Omit<OdpCockpitNode, "sortOrder">;
 
 const buildCockpitNodes = (
@@ -2445,6 +2451,9 @@ const buildCockpitNodes = (
 
   const phaseNodeIdByCode = new Map<string, string>();
   const phaseNodeIdById = new Map<string, string>();
+  const phaseNodeIdsInOrder: string[] = [];
+  const phaseLabelByNodeId = new Map<string, string>();
+  const materialCountByPhaseNode = new Map<string, number>();
 
   phases.phases.forEach((phase, index) => {
     const phaseId = `phase:${phase.id}:${index + 1}`;
@@ -2493,32 +2502,70 @@ const buildCockpitNodes = (
     });
 
     phaseNodeIdById.set(phase.id, phaseId);
-    const codeKey = phase.phaseCode.trim().toLowerCase();
-    if (codeKey && !phaseNodeIdByCode.has(codeKey)) {
-      phaseNodeIdByCode.set(codeKey, phaseId);
-    }
+    phaseNodeIdsInOrder.push(phaseId);
+    phaseLabelByNodeId.set(phaseId, `${phase.phaseCode} - ${phase.phaseName}`);
+    materialCountByPhaseNode.set(phaseId, 0);
+
+    const codeTokens = [
+      phase.phaseCode,
+      phase.phaseName,
+      phase.phaseNo !== null ? `${phase.phaseNo}` : "",
+    ]
+      .map(normalizeLookupToken)
+      .filter(Boolean);
+    codeTokens.forEach((token) => {
+      if (!phaseNodeIdByCode.has(token)) {
+        phaseNodeIdByCode.set(token, phaseId);
+      }
+    });
   });
 
   const materialNodeIdByItemId = new Map<string, string>();
 
   materials.items.forEach((material, index) => {
     let parentId = rootId;
-    const externalPhaseCode = material.externalPhaseCode?.trim().toLowerCase() ?? "";
-    if (externalPhaseCode) {
-      const matched = phaseNodeIdByCode.get(externalPhaseCode);
-      if (matched) {
-        parentId = matched;
+    let parentPhaseLabel = "ODP";
+    let associationSource = "root";
+
+    const materialToken = normalizeLookupToken(
+      `${material.externalPhaseCode ?? ""} ${material.note ?? ""}`,
+    );
+    if (materialToken) {
+      const direct = phaseNodeIdByCode.get(materialToken);
+      if (direct) {
+        parentId = direct;
+        associationSource = "direct-token";
       } else {
-        for (const [phaseCode, phaseNodeId] of phaseNodeIdByCode.entries()) {
-          if (
-            safeContains(externalPhaseCode, phaseCode) ||
-            safeContains(phaseCode, externalPhaseCode)
-          ) {
+        for (const [phaseToken, phaseNodeId] of phaseNodeIdByCode.entries()) {
+          if (safeContains(materialToken, phaseToken) || safeContains(phaseToken, materialToken)) {
             parentId = phaseNodeId;
+            associationSource = "contains-token";
             break;
           }
         }
       }
+    }
+
+    if (parentId === rootId && phaseNodeIdsInOrder.length > 0) {
+      let selectedPhaseNode = phaseNodeIdsInOrder[0];
+      let minCount = materialCountByPhaseNode.get(selectedPhaseNode) ?? 0;
+      phaseNodeIdsInOrder.forEach((phaseNodeId) => {
+        const currentCount = materialCountByPhaseNode.get(phaseNodeId) ?? 0;
+        if (currentCount < minCount) {
+          minCount = currentCount;
+          selectedPhaseNode = phaseNodeId;
+        }
+      });
+      parentId = selectedPhaseNode;
+      associationSource = "balanced-fallback";
+    }
+
+    if (parentId !== rootId) {
+      materialCountByPhaseNode.set(
+        parentId,
+        (materialCountByPhaseNode.get(parentId) ?? 0) + 1,
+      );
+      parentPhaseLabel = phaseLabelByNodeId.get(parentId) ?? parentPhaseLabel;
     }
 
     const materialSignals: OdpCockpitSignal[] = [];
@@ -2549,6 +2596,8 @@ const buildCockpitNodes = (
         `UM: ${material.uom ?? "N/D"}`,
         `Lotto: ${material.lotCode ?? "N/D"}`,
         `Fase esterna: ${material.externalPhaseCode ?? "N/D"}`,
+        `Nodo fase associato: ${parentPhaseLabel}`,
+        `Associazione: ${associationSource}`,
         `Conto lavoro: ${material.subcontractingCode ?? "N/D"}`,
         `Nota: ${material.note ?? "N/D"}`,
         `Sorgente: ${material.sourceTable}`,
@@ -2614,7 +2663,16 @@ const buildCockpitNodes = (
   });
 
   materials.items.forEach((material, index) => {
-    if (!material.hasLots && !material.subcontractingCode && !material.externalPhaseCode) {
+    const hasMovementSignal =
+      material.hasLots ||
+      Boolean(material.subcontractingCode) ||
+      Boolean(material.externalPhaseCode) ||
+      material.hasManualChange ||
+      material.hasSubstitution ||
+      Boolean(material.note) ||
+      ((material.differenceQty ?? 0) !== 0 && material.differenceQty !== null);
+
+    if (!hasMovementSignal) {
       return;
     }
     const parentId = materialNodeIdByItemId.get(material.id) ?? rootId;

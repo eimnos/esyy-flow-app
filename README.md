@@ -389,3 +389,15 @@ cd esyy-flow-app
   - `/odp/[odpId]/fasi`
   - `/odp/[odpId]/materiali`
   - viste collegate commessa (conto lavoro / tracciabilita) quando disponibili
+
+## Scope MD-ODP-Cockpit-02
+
+- refinement mirato del cockpit ODP su due punti:
+  - visibilita livello Materiali nel tree sotto le fasi
+  - separazione chiara interazione espansione/collasso vs apertura dettaglio
+- espansione iniziale migliorata per mostrare in modo piu evidente fase -> materiali -> eventi/movimenti
+- associazione materiali a fase resa piu robusta con fallback bilanciato quando il mapping diretto non e disponibile
+- livello eventi/materiali reso piu leggibile includendo indicatori e segnali disponibili (lotti, conto lavoro, differenze, note)
+- interazione aggiornata:
+  - icona dedicata per espandi/collassa
+  - click riga per selezione + apertura drawer
