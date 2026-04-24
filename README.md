@@ -184,6 +184,7 @@ src/
     (app)/anagrafiche/elenco-distinte-ciclo/[cycleId]/modello/page.tsx
     (app)/odp/page.tsx
     (app)/odp/[odpId]/page.tsx
+    (app)/odp/[odpId]/fasi/page.tsx
     (app)/mes/page.tsx
     (app)/conto-lavoro/page.tsx
     api/health/route.ts
@@ -356,3 +357,11 @@ cd esyy-flow-app
 - blocchi sintetici per quantita/date/criticita e legame commessa
 - accessi rapidi verso fasi, materiali e conto lavoro (con fallback placeholder dove necessario)
 - nessun editing operativo e nessuna logica MES introdotta in questa wave
+
+## Scope MD-24
+
+- nuova pagina `/odp/[odpId]/fasi` per vista read-only tenant-scoped delle fasi ODP
+- doppia lettura con tabella fasi e timeline semplificata degli eventi temporali disponibili
+- evidenza di stato, avanzamento, ritardi/blocchi, fase esterna, qualita e legame ODP
+- filtri base su ricerca, stato, ritardo, blocco, tipo fase esterna/interna, qualita
+- accessi rapidi coerenti verso dettaglio ODP, materiali e conto lavoro (placeholder dove necessario)

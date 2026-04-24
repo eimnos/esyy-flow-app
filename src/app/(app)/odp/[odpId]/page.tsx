@@ -105,9 +105,7 @@ export default async function OdpDetailPage({
   const detail = await getTenantOdpById(selectedTenantId, resolvedParams.odpId);
   const order = detail.order;
   const commessaLink = order?.commessaId ? `/commesse/${order.commessaId}` : null;
-  const fasiLink = order?.commessaId
-    ? `/commesse/${order.commessaId}/produzione?odp=${encodeURIComponent(`id:${order.id}`)}#fasi`
-    : `/odp/${resolvedParams.odpId}?section=fasi`;
+  const fasiLink = `/odp/${resolvedParams.odpId}/fasi`;
   const materialiLink = order?.commessaId
     ? `/commesse/${order.commessaId}/approvvigionamenti`
     : `/odp/${resolvedParams.odpId}?section=materiali`;

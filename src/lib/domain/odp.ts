@@ -50,6 +50,67 @@ export type OdpDetailResult = {
   error: string | null;
 };
 
+export type OdpPhaseFilters = {
+  q?: string;
+  status?: string;
+  delay?: OdpDelayFilter;
+  blocked?: OdpBinaryFilter;
+  external?: OdpBinaryFilter;
+  quality?: OdpBinaryFilter;
+};
+
+export type OdpPhaseItem = {
+  id: string;
+  tenantId: string;
+  odpId: string;
+  odpCode: string | null;
+  phaseNo: number | null;
+  phaseCode: string;
+  phaseName: string;
+  status: string;
+  progressPct: number | null;
+  isDelayed: boolean;
+  delayDays: number | null;
+  isBlocked: boolean;
+  isExternal: boolean | null;
+  hasQuality: boolean | null;
+  openIssues: number | null;
+  startedAt: string | null;
+  dueDate: string | null;
+  completedAt: string | null;
+  sourceTable: string;
+};
+
+export type OdpPhaseTimelineEvent = {
+  id: string;
+  at: string | null;
+  title: string;
+  detail: string;
+  sourceTable: string;
+};
+
+export type OdpPhaseSummary = {
+  total: number;
+  delayed: number;
+  blocked: number;
+  external: number;
+  withQuality: number;
+  completed: number;
+  avgProgressPct: number | null;
+};
+
+export type OdpPhaseResult = {
+  order: OdpListItem | null;
+  phases: OdpPhaseItem[];
+  timeline: OdpPhaseTimelineEvent[];
+  statuses: string[];
+  summary: OdpPhaseSummary;
+  sourceTables: string[];
+  warnings: string[];
+  emptyStateHint: string | null;
+  error: string | null;
+};
+
 export type OdpCatalogSummary = {
   total: number;
   delayed: number;
@@ -97,6 +158,27 @@ type OdpTableCandidate = {
   startedAtColumns: string[];
   completedAtColumns: string[];
   originColumns: string[];
+};
+
+type OdpPhaseTableCandidate = {
+  table: string;
+  idColumns: string[];
+  tenantColumns: string[];
+  orderColumns: string[];
+  orderCodeColumns: string[];
+  phaseNoColumns: string[];
+  phaseCodeColumns: string[];
+  phaseNameColumns: string[];
+  statusColumns: string[];
+  progressColumns: string[];
+  delayColumns: string[];
+  dueDateColumns: string[];
+  blockedColumns: string[];
+  externalColumns: string[];
+  qualityColumns: string[];
+  openIssueColumns: string[];
+  startedAtColumns: string[];
+  completedAtColumns: string[];
 };
 
 type CandidateRowsBundle = {
@@ -295,6 +377,123 @@ const TABLE_CANDIDATES: OdpTableCandidate[] = [
   },
 ];
 
+const ODP_PHASE_TABLE_CANDIDATES: OdpPhaseTableCandidate[] = [
+  {
+    table: "production_order_phases",
+    idColumns: ["id", "production_order_phase_id", "phase_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "order_code", "document_no", "code"],
+    phaseNoColumns: ["phase_no", "step_no", "sequence_no", "line_no"],
+    phaseCodeColumns: ["phase_code", "step_code", "operation_code", "code"],
+    phaseNameColumns: ["phase_name", "step_name", "operation_name", "name", "description"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status"],
+    progressColumns: [
+      "progress_pct",
+      "completion_pct",
+      "completion_percent",
+      "progress_ratio",
+      "progress",
+    ],
+    delayColumns: ["delay_days", "days_late", "lateness_days"],
+    dueDateColumns: ["due_date", "target_date", "planned_end_date"],
+    blockedColumns: ["is_blocked", "has_blocking_issue", "blocked_flag", "blocker_count"],
+    externalColumns: ["is_external", "is_outsourced", "phase_type", "execution_type", "process_type"],
+    qualityColumns: ["has_quality_check", "quality_required", "requires_quality", "quality_enabled"],
+    openIssueColumns: ["open_issue_count", "criticality_count", "open_alert_count", "issue_count"],
+    startedAtColumns: [
+      "started_at",
+      "actual_start_at",
+      "production_start_at",
+      "started_on",
+      "start_at",
+    ],
+    completedAtColumns: [
+      "completed_at",
+      "actual_end_at",
+      "production_end_at",
+      "finished_at",
+      "ended_at",
+    ],
+  },
+  {
+    table: "production_order_steps",
+    idColumns: ["id", "production_order_step_id", "phase_id", "step_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "order_code", "document_no", "code"],
+    phaseNoColumns: ["phase_no", "step_no", "sequence_no", "line_no"],
+    phaseCodeColumns: ["phase_code", "step_code", "operation_code", "code"],
+    phaseNameColumns: ["phase_name", "step_name", "operation_name", "name", "description"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status"],
+    progressColumns: [
+      "progress_pct",
+      "completion_pct",
+      "completion_percent",
+      "progress_ratio",
+      "progress",
+    ],
+    delayColumns: ["delay_days", "days_late", "lateness_days"],
+    dueDateColumns: ["due_date", "target_date", "planned_end_date"],
+    blockedColumns: ["is_blocked", "has_blocking_issue", "blocked_flag", "blocker_count"],
+    externalColumns: ["is_external", "is_outsourced", "phase_type", "execution_type", "process_type"],
+    qualityColumns: ["has_quality_check", "quality_required", "requires_quality", "quality_enabled"],
+    openIssueColumns: ["open_issue_count", "criticality_count", "open_alert_count", "issue_count"],
+    startedAtColumns: [
+      "started_at",
+      "actual_start_at",
+      "production_start_at",
+      "started_on",
+      "start_at",
+    ],
+    completedAtColumns: [
+      "completed_at",
+      "actual_end_at",
+      "production_end_at",
+      "finished_at",
+      "ended_at",
+    ],
+  },
+  {
+    table: "production_phase_instances",
+    idColumns: ["id", "production_phase_instance_id", "phase_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "order_code", "document_no", "code"],
+    phaseNoColumns: ["phase_no", "step_no", "sequence_no", "line_no"],
+    phaseCodeColumns: ["phase_code", "step_code", "operation_code", "code"],
+    phaseNameColumns: ["phase_name", "step_name", "operation_name", "name", "description"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status"],
+    progressColumns: [
+      "progress_pct",
+      "completion_pct",
+      "completion_percent",
+      "progress_ratio",
+      "progress",
+    ],
+    delayColumns: ["delay_days", "days_late", "lateness_days"],
+    dueDateColumns: ["due_date", "target_date", "planned_end_date"],
+    blockedColumns: ["is_blocked", "has_blocking_issue", "blocked_flag", "blocker_count"],
+    externalColumns: ["is_external", "is_outsourced", "phase_type", "execution_type", "process_type"],
+    qualityColumns: ["has_quality_check", "quality_required", "requires_quality", "quality_enabled"],
+    openIssueColumns: ["open_issue_count", "criticality_count", "open_alert_count", "issue_count"],
+    startedAtColumns: [
+      "started_at",
+      "actual_start_at",
+      "production_start_at",
+      "started_on",
+      "start_at",
+    ],
+    completedAtColumns: [
+      "completed_at",
+      "actual_end_at",
+      "production_end_at",
+      "finished_at",
+      "ended_at",
+    ],
+  },
+];
+
 const looksLikeMissingTable = (message: string) => {
   const normalized = message.toLowerCase();
   return normalized.includes("could not find the table") || normalized.includes("schema cache");
@@ -479,6 +678,17 @@ const parseProgress = (row: RawRow, candidate: OdpTableCandidate) => {
   return Math.round(Math.max(0, value) * 100) / 100;
 };
 
+const parseProgressFromColumns = (row: RawRow, progressColumns: string[]) => {
+  const value = readNumberFromKeys(row, progressColumns);
+  if (value === null) {
+    return null;
+  }
+  if (value <= 1) {
+    return Math.round(Math.max(0, value) * 10000) / 100;
+  }
+  return Math.round(Math.max(0, value) * 100) / 100;
+};
+
 const parseDelay = (row: RawRow, candidate: OdpTableCandidate) => {
   const explicit = readNumberFromKeys(row, candidate.delayColumns);
   if (explicit !== null) {
@@ -490,6 +700,36 @@ const parseDelay = (row: RawRow, candidate: OdpTableCandidate) => {
   }
 
   const dueDate = readDateFromKeys(row, candidate.dueDateColumns);
+  if (!dueDate) {
+    return {
+      isDelayed: false,
+      delayDays: null as number | null,
+    };
+  }
+
+  const millis = Date.now() - dueDate.getTime();
+  const days = Math.floor(millis / (1000 * 60 * 60 * 24));
+  return {
+    isDelayed: days > 0,
+    delayDays: days > 0 ? days : 0,
+  };
+};
+
+const resolveDelayFromColumns = (
+  row: RawRow,
+  delayColumns: string[],
+  dueDateColumns: string[],
+) => {
+  const explicit = readNumberFromKeys(row, delayColumns);
+  if (explicit !== null) {
+    const rounded = Math.floor(explicit);
+    return {
+      isDelayed: rounded > 0,
+      delayDays: rounded > 0 ? rounded : 0,
+    };
+  }
+
+  const dueDate = readDateFromKeys(row, dueDateColumns);
   if (!dueDate) {
     return {
       isDelayed: false,
@@ -1058,6 +1298,372 @@ export const getTenantOdpById = async (
     return {
       order: null,
       sourceTable: null,
+      warnings: [],
+      emptyStateHint: null,
+      error: caughtError instanceof Error ? caughtError.message : "Errore inatteso.",
+    };
+  }
+};
+
+const queryPhaseRowsByOrder = async (
+  candidate: OdpPhaseTableCandidate,
+  tenantId: string,
+  odpId: string,
+): Promise<QueryRowsResult> => {
+  const admin = getSupabaseAdminClient();
+
+  for (const orderColumn of candidate.orderColumns) {
+    for (const tenantColumn of candidate.tenantColumns) {
+      const { data, error } = await admin
+        .from(candidate.table)
+        .select("*")
+        .eq(orderColumn, odpId)
+        .eq(tenantColumn, tenantId)
+        .limit(SAFE_LIST_LIMIT);
+
+      if (!error) {
+        return {
+          exists: true,
+          rows: (data ?? []) as RawRow[],
+          warning: null,
+        };
+      }
+
+      const message = error.message ?? "Unknown query error";
+      if (
+        looksLikeMissingTable(message) ||
+        looksLikeMissingColumn(message, orderColumn) ||
+        looksLikeMissingColumn(message, tenantColumn)
+      ) {
+        continue;
+      }
+
+      return {
+        exists: true,
+        rows: [],
+        warning: `Errore su ${candidate.table}: ${message}`,
+      };
+    }
+  }
+
+  for (const orderColumn of candidate.orderColumns) {
+    const fallback = await admin
+      .from(candidate.table)
+      .select("*")
+      .eq(orderColumn, odpId)
+      .limit(SAFE_LIST_LIMIT);
+    if (!fallback.error) {
+      const rows = ((fallback.data ?? []) as RawRow[]).filter((row) => {
+        const rowTenant = readStringFromKeys(row, candidate.tenantColumns);
+        return rowTenant === tenantId;
+      });
+      return {
+        exists: true,
+        rows,
+        warning: null,
+      };
+    }
+
+    const message = fallback.error.message ?? "Unknown query error";
+    if (looksLikeMissingTable(message) || looksLikeMissingColumn(message, orderColumn)) {
+      continue;
+    }
+
+    return {
+      exists: true,
+      rows: [],
+      warning: `Errore su ${candidate.table}: ${message}`,
+    };
+  }
+
+  return {
+    exists: false,
+    rows: [],
+    warning: null,
+  };
+};
+
+const normalizePhaseRow = (
+  row: RawRow,
+  candidate: OdpPhaseTableCandidate,
+  tenantId: string,
+  odpId: string,
+  fallbackCode: string | null,
+  rowIndex: number,
+): OdpPhaseItem | null => {
+  const id =
+    readStringFromKeys(row, candidate.idColumns) || `${candidate.table}-phase-${rowIndex + 1}`;
+  if (!id) {
+    return null;
+  }
+
+  const phaseCode = readStringFromKeys(row, candidate.phaseCodeColumns) || `Fase-${rowIndex + 1}`;
+  const phaseName = readStringFromKeys(row, candidate.phaseNameColumns) || phaseCode;
+  const status = readStringFromKeys(row, candidate.statusColumns) || "unknown";
+  const progressPct = parseProgressFromColumns(row, candidate.progressColumns);
+  const delay = resolveDelayFromColumns(row, candidate.delayColumns, candidate.dueDateColumns);
+  const blocked =
+    readBooleanFromKeys(row, candidate.blockedColumns) ??
+    ((readNumberFromKeys(row, candidate.blockedColumns) ?? 0) > 0);
+
+  const orderCode = readStringFromKeys(row, candidate.orderCodeColumns) || fallbackCode;
+
+  return {
+    id,
+    tenantId: readStringFromKeys(row, candidate.tenantColumns) || tenantId,
+    odpId,
+    odpCode: orderCode || null,
+    phaseNo: readNumberFromKeys(row, candidate.phaseNoColumns),
+    phaseCode,
+    phaseName,
+    status,
+    progressPct,
+    isDelayed: delay.isDelayed,
+    delayDays: delay.delayDays,
+    isBlocked: blocked,
+    isExternal: readBooleanFromKeys(row, candidate.externalColumns),
+    hasQuality: readBooleanFromKeys(row, candidate.qualityColumns),
+    openIssues: readNumberFromKeys(row, candidate.openIssueColumns),
+    startedAt: readDateTextFromKeys(row, candidate.startedAtColumns),
+    dueDate: readDateTextFromKeys(row, candidate.dueDateColumns),
+    completedAt: readDateTextFromKeys(row, candidate.completedAtColumns),
+    sourceTable: candidate.table,
+  };
+};
+
+const dedupePhases = (items: OdpPhaseItem[]) => {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.id}:${item.phaseCode}:${item.sourceTable}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+};
+
+const sortPhases = (items: OdpPhaseItem[]) =>
+  [...items].sort((left, right) => {
+    if (left.isBlocked !== right.isBlocked) {
+      return left.isBlocked ? -1 : 1;
+    }
+    if (left.isDelayed !== right.isDelayed) {
+      return left.isDelayed ? -1 : 1;
+    }
+
+    const leftNo = left.phaseNo ?? Number.MAX_SAFE_INTEGER;
+    const rightNo = right.phaseNo ?? Number.MAX_SAFE_INTEGER;
+    if (leftNo !== rightNo) {
+      return leftNo - rightNo;
+    }
+
+    return left.phaseCode.localeCompare(right.phaseCode, "it");
+  });
+
+const avgPhaseProgress = (items: OdpPhaseItem[]) => {
+  const values = items
+    .map((item) => item.progressPct)
+    .filter((value): value is number => value !== null && Number.isFinite(value));
+  if (values.length === 0) {
+    return null;
+  }
+
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return Math.round((total / values.length) * 100) / 100;
+};
+
+const buildPhaseSummary = (items: OdpPhaseItem[]): OdpPhaseSummary => ({
+  total: items.length,
+  delayed: items.filter((item) => item.isDelayed).length,
+  blocked: items.filter((item) => item.isBlocked).length,
+  external: items.filter((item) => item.isExternal === true).length,
+  withQuality: items.filter((item) => item.hasQuality === true).length,
+  completed: items.filter((item) => item.status.toLowerCase().includes("complete")).length,
+  avgProgressPct: avgPhaseProgress(items),
+});
+
+const safeTimelineDate = (value: string | null) => {
+  if (!value) {
+    return -1;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return -1;
+  }
+  return parsed.getTime();
+};
+
+const buildPhaseTimeline = (items: OdpPhaseItem[]) => {
+  const events: OdpPhaseTimelineEvent[] = [];
+
+  for (const phase of items) {
+    const label = phase.phaseNo !== null ? `${phase.phaseNo} - ${phase.phaseCode}` : phase.phaseCode;
+    if (phase.startedAt) {
+      events.push({
+        id: `${phase.id}:start`,
+        at: phase.startedAt,
+        title: `Avvio fase ${label}`,
+        detail: phase.phaseName,
+        sourceTable: phase.sourceTable,
+      });
+    }
+    if (phase.dueDate) {
+      events.push({
+        id: `${phase.id}:due`,
+        at: phase.dueDate,
+        title: `Scadenza fase ${label}`,
+        detail: phase.phaseName,
+        sourceTable: phase.sourceTable,
+      });
+    }
+    if (phase.completedAt) {
+      events.push({
+        id: `${phase.id}:completed`,
+        at: phase.completedAt,
+        title: `Completamento fase ${label}`,
+        detail: phase.phaseName,
+        sourceTable: phase.sourceTable,
+      });
+    }
+  }
+
+  return events
+    .sort((left, right) => safeTimelineDate(right.at) - safeTimelineDate(left.at))
+    .slice(0, 40);
+};
+
+const applyPhaseFilters = (items: OdpPhaseItem[], filters: OdpPhaseFilters) => {
+  const query = (filters.q ?? "").trim().toLowerCase();
+  const selectedStatus = (filters.status ?? "all").trim().toLowerCase();
+  const delayFilter = normalizeDelayFilter(filters.delay);
+  const blockedFilter = normalizeBinaryFilter(filters.blocked);
+  const externalFilter = normalizeBinaryFilter(filters.external);
+  const qualityFilter = normalizeBinaryFilter(filters.quality);
+
+  return items.filter((item) => {
+    if (query) {
+      const haystack = [
+        item.phaseCode,
+        item.phaseName,
+        item.status,
+        item.odpCode ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(query)) {
+        return false;
+      }
+    }
+
+    if (selectedStatus !== "all" && item.status.toLowerCase() !== selectedStatus) {
+      return false;
+    }
+
+    if (!matchesDelayFilter(item.isDelayed, delayFilter)) {
+      return false;
+    }
+    if (!matchesBinaryFilter(item.isBlocked, blockedFilter)) {
+      return false;
+    }
+    if (!matchesBinaryFilter(item.isExternal === true, externalFilter)) {
+      return false;
+    }
+    if (!matchesBinaryFilter(item.hasQuality === true, qualityFilter)) {
+      return false;
+    }
+
+    return true;
+  });
+};
+
+const buildPhases = async (
+  tenantId: string,
+  odpId: string,
+  filters: OdpPhaseFilters,
+): Promise<OdpPhaseResult> => {
+  const detail = await getTenantOdpById(tenantId, odpId);
+  const warnings = [...detail.warnings];
+  const sourceTables = new Set<string>();
+  const normalized: OdpPhaseItem[] = [];
+
+  const fallbackOrderCode = detail.order?.code ?? null;
+
+  for (const candidate of ODP_PHASE_TABLE_CANDIDATES) {
+    const result = await queryPhaseRowsByOrder(candidate, tenantId, odpId);
+    if (result.warning) {
+      warnings.push(result.warning);
+    }
+    if (!result.exists) {
+      continue;
+    }
+
+    sourceTables.add(candidate.table);
+    result.rows.forEach((row, index) => {
+      const item = normalizePhaseRow(row, candidate, tenantId, odpId, fallbackOrderCode, index);
+      if (item) {
+        normalized.push(item);
+      }
+    });
+  }
+
+  const sorted = sortPhases(dedupePhases(normalized));
+  const phases = applyPhaseFilters(sorted, filters);
+  const timeline = buildPhaseTimeline(phases);
+  const statuses = uniqueValues(sorted.map((item) => item.status));
+
+  let emptyStateHint: string | null = null;
+  if (sorted.length === 0) {
+    emptyStateHint =
+      sourceTables.size === 0
+        ? "Nessuna sorgente fasi ODP disponibile nel DB esposto."
+        : "Nessuna fase disponibile per l'ODP selezionato nel tenant corrente.";
+  } else if (phases.length === 0) {
+    emptyStateHint = "Nessuna fase trovata con i filtri correnti.";
+  }
+
+  return {
+    order: detail.order,
+    phases,
+    timeline,
+    statuses,
+    summary: buildPhaseSummary(phases),
+    sourceTables: [...sourceTables].sort((left, right) => left.localeCompare(right, "it")),
+    warnings,
+    emptyStateHint,
+    error: detail.error,
+  };
+};
+
+export const getTenantOdpPhases = async (
+  tenantId: string,
+  odpId: string,
+  filters: OdpPhaseFilters,
+): Promise<OdpPhaseResult> => {
+  if (!tenantId || !odpId) {
+    return {
+      order: null,
+      phases: [],
+      timeline: [],
+      statuses: [],
+      summary: buildPhaseSummary([]),
+      sourceTables: [],
+      warnings: [],
+      emptyStateHint: null,
+      error: "Parametri non validi.",
+    };
+  }
+
+  try {
+    return await buildPhases(tenantId, odpId, filters);
+  } catch (caughtError) {
+    return {
+      order: null,
+      phases: [],
+      timeline: [],
+      statuses: [],
+      summary: buildPhaseSummary([]),
+      sourceTables: [],
       warnings: [],
       emptyStateHint: null,
       error: caughtError instanceof Error ? caughtError.message : "Errore inatteso.",
