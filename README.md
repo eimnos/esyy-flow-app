@@ -185,6 +185,7 @@ src/
     (app)/odp/page.tsx
     (app)/odp/[odpId]/page.tsx
     (app)/odp/[odpId]/fasi/page.tsx
+    (app)/odp/[odpId]/materiali/page.tsx
     (app)/mes/page.tsx
     (app)/conto-lavoro/page.tsx
     api/health/route.ts
@@ -365,3 +366,11 @@ cd esyy-flow-app
 - evidenza di stato, avanzamento, ritardi/blocchi, fase esterna, qualita e legame ODP
 - filtri base su ricerca, stato, ritardo, blocco, tipo fase esterna/interna, qualita
 - accessi rapidi coerenti verso dettaglio ODP, materiali e conto lavoro (placeholder dove necessario)
+
+## Scope MD-25
+
+- nuova pagina `/odp/[odpId]/materiali` per vista read-only tenant-scoped dei materiali effettivi ODP
+- confronto teorico/prelevato/consumato con differenza visibile, inclusi totali sintetici
+- evidenza di modifiche manuali, sostituzioni, lotti e collegamenti verso fase esterna/conto lavoro dove disponibili
+- filtri base su ricerca, stato, differenza, manuale, sostituzione, lotti e link esterni
+- quick link coerenti verso dettaglio ODP, fasi ODP e conto lavoro (placeholder dove il dominio non espone ancora tutto)

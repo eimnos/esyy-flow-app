@@ -1,27 +1,28 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
-  getTenantOdpPhases,
+  getTenantOdpMaterials,
   type OdpBinaryFilter,
-  type OdpDelayFilter,
+  type OdpMaterialDifferenceFilter,
 } from "@/lib/domain/odp";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
 export const dynamic = "force-dynamic";
 
-type OdpPhasesPageProps = {
+type OdpMaterialsPageProps = {
   params: Promise<{
     odpId: string;
   }>;
   searchParams: Promise<{
     q?: string | string[];
     status?: string | string[];
-    delay?: string | string[];
-    blocked?: string | string[];
+    difference?: string | string[];
+    manual?: string | string[];
+    substitution?: string | string[];
+    lots?: string | string[];
     external?: string | string[];
-    quality?: string | string[];
   }>;
 };
 
@@ -31,58 +32,33 @@ const normalizeParam = (value: string | string[] | undefined) =>
 const normalizeBinaryFilter = (value: string): OdpBinaryFilter =>
   value === "yes" || value === "no" ? value : "all";
 
-const normalizeDelayFilter = (value: string): OdpDelayFilter =>
-  value === "late" || value === "on-time" ? value : "all";
+const normalizeDifferenceFilter = (value: string): OdpMaterialDifferenceFilter =>
+  value === "positive" || value === "negative" || value === "none" ? value : "all";
 
-const formatPercent = (value: number | null) => {
+const formatQty = (value: number | null) => {
   if (value === null || Number.isNaN(value)) {
     return "N/D";
   }
-  return `${Math.round(value)}%`;
+  return value.toLocaleString("it-IT", { maximumFractionDigits: 3 });
 };
 
-const formatDateTime = (value: string | null) => {
-  if (!value) {
+const formatDiff = (value: number | null) => {
+  if (value === null || Number.isNaN(value)) {
     return "N/D";
   }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
+  const normalized = Math.round(value * 1000) / 1000;
+  if (normalized > 0) {
+    return `+${formatQty(normalized)}`;
   }
-
-  return parsed.toLocaleString("it-IT", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  return formatQty(normalized);
 };
 
-const delayLabel = (isDelayed: boolean, delayDays: number | null) => {
-  if (!isDelayed) {
-    return "No";
-  }
-  if (delayDays === null) {
-    return "Si";
-  }
-  return `Si (${delayDays} gg)`;
-};
+const boolLabel = (value: boolean) => (value ? "Si" : "No");
 
-const blockedLabel = (isBlocked: boolean) => (isBlocked ? "Bloccata" : "No");
-
-const externalLabel = (value: boolean | null) => {
-  if (value === null) {
-    return "N/D";
-  }
-  return value ? "Esterna" : "Interna";
-};
-
-const qualityLabel = (value: boolean | null) => {
-  if (value === null) {
-    return "N/D";
-  }
-  return value ? "Si" : "No";
-};
-
-export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesPageProps) {
+export default async function OdpMaterialsPage({
+  params,
+  searchParams,
+}: OdpMaterialsPageProps) {
   const cookieStore = await cookies();
   const selectedTenantId = cookieStore.get(ACTIVE_TENANT_COOKIE)?.value ?? "";
   if (!selectedTenantId) {
@@ -94,33 +70,38 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
 
   const q = normalizeParam(resolvedSearchParams.q);
   const status = normalizeParam(resolvedSearchParams.status) || "all";
-  const delay = normalizeDelayFilter(normalizeParam(resolvedSearchParams.delay));
-  const blocked = normalizeBinaryFilter(normalizeParam(resolvedSearchParams.blocked));
+  const difference = normalizeDifferenceFilter(normalizeParam(resolvedSearchParams.difference));
+  const manual = normalizeBinaryFilter(normalizeParam(resolvedSearchParams.manual));
+  const substitution = normalizeBinaryFilter(normalizeParam(resolvedSearchParams.substitution));
+  const lots = normalizeBinaryFilter(normalizeParam(resolvedSearchParams.lots));
   const external = normalizeBinaryFilter(normalizeParam(resolvedSearchParams.external));
-  const quality = normalizeBinaryFilter(normalizeParam(resolvedSearchParams.quality));
 
-  const phases = await getTenantOdpPhases(selectedTenantId, resolvedParams.odpId, {
+  const materials = await getTenantOdpMaterials(selectedTenantId, resolvedParams.odpId, {
     q,
     status,
-    delay,
-    blocked,
-    external,
-    quality,
+    difference,
+    manual,
+    substitution,
+    lots,
+    externalLink: external,
   });
 
-  const orderCode = phases.order?.code ?? resolvedParams.odpId;
+  const orderCode = materials.order?.code ?? resolvedParams.odpId;
+  const contoLavoroLink = materials.order?.commessaId
+    ? `/commesse/${materials.order.commessaId}/conto-lavoro`
+    : `/odp/${resolvedParams.odpId}?section=conto-lavoro`;
 
   return (
-    <section style={{ display: "grid", gap: "1rem", maxWidth: "1280px" }}>
+    <section style={{ display: "grid", gap: "1rem", maxWidth: "1320px" }}>
       <header style={{ display: "grid", gap: "0.35rem" }}>
-        <h1 style={{ margin: 0 }}>Ordini di Produzione / Fasi ODP</h1>
+        <h1 style={{ margin: 0 }}>Ordini di Produzione / Materiali effettivi</h1>
         <p style={{ margin: 0, color: "#475569" }}>
-          Vista read-only tenant-scoped delle fasi operative dell&apos;ordine con timeline
-          semplificata, stato avanzamento e criticita.
+          Vista read-only tenant-scoped dei materiali reali dell&apos;ODP con confronto tra teorico,
+          prelevato, consumato e scostamento.
         </p>
       </header>
 
-      {phases.error ? (
+      {materials.error ? (
         <p
           role="alert"
           style={{
@@ -132,7 +113,7 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
             padding: "0.8rem",
           }}
         >
-          {phases.error}
+          {materials.error}
         </p>
       ) : null}
 
@@ -153,15 +134,15 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
         </div>
         <div style={{ display: "grid", gap: "0.2rem" }}>
           <span style={{ fontSize: "0.82rem", color: "#475569" }}>Descrizione</span>
-          <span>{phases.order?.name ?? "N/D"}</span>
+          <span>{materials.order?.name ?? "N/D"}</span>
         </div>
         <div style={{ display: "grid", gap: "0.2rem" }}>
           <span style={{ fontSize: "0.82rem", color: "#475569" }}>Stato ODP</span>
-          <span>{phases.order?.status ?? "N/D"}</span>
+          <span>{materials.order?.status ?? "N/D"}</span>
         </div>
         <div style={{ display: "grid", gap: "0.2rem" }}>
           <span style={{ fontSize: "0.82rem", color: "#475569" }}>Origine</span>
-          <span>{phases.order?.origin ?? "N/D"}</span>
+          <span>{materials.order?.origin ?? "N/D"}</span>
         </div>
       </section>
 
@@ -169,7 +150,7 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
         method="get"
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(220px,2fr) repeat(5,minmax(130px,1fr)) auto",
+          gridTemplateColumns: "minmax(220px,2fr) repeat(6,minmax(115px,1fr)) auto",
           gap: "0.55rem",
           alignItems: "end",
           border: "1px solid #d1d5db",
@@ -184,7 +165,7 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
             type="search"
             name="q"
             defaultValue={q}
-            placeholder="codice fase o descrizione"
+            placeholder="materiale, lotto, fase, nota"
             style={{ padding: "0.5rem 0.6rem" }}
           />
         </label>
@@ -193,7 +174,7 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
           <span style={{ fontSize: "0.85rem", color: "#334155" }}>Stato</span>
           <select name="status" defaultValue={status} style={{ padding: "0.5rem 0.6rem" }}>
             <option value="all">Tutti</option>
-            {phases.statuses.map((statusValue) => (
+            {materials.statuses.map((statusValue) => (
               <option key={statusValue} value={statusValue}>
                 {statusValue}
               </option>
@@ -202,38 +183,52 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
         </label>
 
         <label style={{ display: "grid", gap: "0.3rem" }}>
-          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Ritardo</span>
-          <select name="delay" defaultValue={delay} style={{ padding: "0.5rem 0.6rem" }}>
+          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Differenza</span>
+          <select name="difference" defaultValue={difference} style={{ padding: "0.5rem 0.6rem" }}>
             <option value="all">Tutte</option>
-            <option value="late">In ritardo</option>
-            <option value="on-time">In linea</option>
+            <option value="positive">Positiva</option>
+            <option value="negative">Negativa</option>
+            <option value="none">Allineata</option>
           </select>
         </label>
 
         <label style={{ display: "grid", gap: "0.3rem" }}>
-          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Blocco</span>
-          <select name="blocked" defaultValue={blocked} style={{ padding: "0.5rem 0.6rem" }}>
+          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Modifica manuale</span>
+          <select name="manual" defaultValue={manual} style={{ padding: "0.5rem 0.6rem" }}>
             <option value="all">Tutte</option>
-            <option value="yes">Bloccate</option>
-            <option value="no">Non bloccate</option>
+            <option value="yes">Solo si</option>
+            <option value="no">Solo no</option>
           </select>
         </label>
 
         <label style={{ display: "grid", gap: "0.3rem" }}>
-          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Tipo fase</span>
+          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Sostituzione</span>
+          <select
+            name="substitution"
+            defaultValue={substitution}
+            style={{ padding: "0.5rem 0.6rem" }}
+          >
+            <option value="all">Tutte</option>
+            <option value="yes">Solo si</option>
+            <option value="no">Solo no</option>
+          </select>
+        </label>
+
+        <label style={{ display: "grid", gap: "0.3rem" }}>
+          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Lotti</span>
+          <select name="lots" defaultValue={lots} style={{ padding: "0.5rem 0.6rem" }}>
+            <option value="all">Tutti</option>
+            <option value="yes">Con lotto</option>
+            <option value="no">Senza lotto</option>
+          </select>
+        </label>
+
+        <label style={{ display: "grid", gap: "0.3rem" }}>
+          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Link esterni</span>
           <select name="external" defaultValue={external} style={{ padding: "0.5rem 0.6rem" }}>
-            <option value="all">Tutte</option>
-            <option value="yes">Esterne</option>
-            <option value="no">Interne</option>
-          </select>
-        </label>
-
-        <label style={{ display: "grid", gap: "0.3rem" }}>
-          <span style={{ fontSize: "0.85rem", color: "#334155" }}>Qualita</span>
-          <select name="quality" defaultValue={quality} style={{ padding: "0.5rem 0.6rem" }}>
-            <option value="all">Tutte</option>
-            <option value="yes">Con qualita</option>
-            <option value="no">Senza qualita</option>
+            <option value="all">Tutti</option>
+            <option value="yes">Con link</option>
+            <option value="no">Senza link</option>
           </select>
         </label>
 
@@ -252,7 +247,7 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
           gap: "0.7rem",
         }}
       >
-        <strong>Situazione sintetica fasi ODP</strong>
+        <strong>Situazione sintetica materiali ODP</strong>
         <div
           style={{
             display: "grid",
@@ -261,12 +256,19 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
           }}
         >
           {[
-            ["Fasi visibili", `${phases.summary.total}`],
-            ["Avanzamento medio", formatPercent(phases.summary.avgProgressPct)],
-            ["In ritardo", `${phases.summary.delayed}`],
-            ["Bloccate", `${phases.summary.blocked}`],
-            ["Esterne", `${phases.summary.external}`],
-            ["Con qualita", `${phases.summary.withQuality}`],
+            ["Righe visibili", `${materials.summary.total}`],
+            ["Con differenza", `${materials.summary.withDifference}`],
+            ["Sovra-consumo", `${materials.summary.overConsumed}`],
+            ["Sotto-consumo", `${materials.summary.underConsumed}`],
+            ["Allineate", `${materials.summary.aligned}`],
+            ["Modifiche manuali", `${materials.summary.manualChanges}`],
+            ["Sostituzioni", `${materials.summary.substitutions}`],
+            ["Con lotto", `${materials.summary.withLots}`],
+            ["Link esterni", `${materials.summary.externalLinked}`],
+            ["Tot teorico", formatQty(materials.summary.theoreticalQtyTotal)],
+            ["Tot prelevato", formatQty(materials.summary.pickedQtyTotal)],
+            ["Tot consumato", formatQty(materials.summary.consumedQtyTotal)],
+            ["Tot differenza", formatDiff(materials.summary.differenceQtyTotal)],
           ].map(([label, value]) => (
             <div
               key={label}
@@ -295,25 +297,24 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
         }}
       >
         <header style={{ padding: "0.85rem", borderBottom: "1px solid #e2e8f0", display: "grid", gap: "0.25rem" }}>
-          <strong>Tabella fasi ODP</strong>
+          <strong>Distinta dinamica materiali ODP</strong>
           <p style={{ margin: 0, color: "#475569", fontSize: "0.9rem" }}>
-            Stato fase, avanzamento, ritardi/blocchi, fase esterna e qualita, con legame diretto all&apos;ODP.
+            Confronto teorico/prelevato/consumato con differenze, sostituzioni, lotti e legami verso
+            fasi esterne o conto lavoro dove disponibili.
           </p>
         </header>
 
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1300px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1420px" }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
               {[
                 "ODP",
-                "Fase",
+                "Materiale",
                 "Stato",
-                "Avanzamento",
-                "Ritardo",
-                "Blocco",
-                "Tipo fase",
-                "Qualita",
-                "Date",
+                "Quantita",
+                "Modifiche",
+                "Lotti",
+                "Collegamenti",
                 "Azioni",
               ].map((header) => (
                 <th
@@ -333,54 +334,57 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
             </tr>
           </thead>
           <tbody>
-            {phases.phases.map((phase) => (
-              <tr key={`${phase.sourceTable}-${phase.id}`}>
+            {materials.items.map((item) => (
+              <tr key={`${item.sourceTable}-${item.id}`}>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                   <span style={{ display: "grid", gap: "0.2rem" }}>
-                    <strong>{phase.odpCode ?? orderCode}</strong>
+                    <strong>{item.odpCode ?? orderCode}</strong>
                     <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
-                      Sorgente: {phase.sourceTable}
+                      Sorgente: {item.sourceTable}
                     </span>
                   </span>
                 </td>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                   <span style={{ display: "grid", gap: "0.2rem" }}>
-                    <strong>
-                      {phase.phaseNo ?? "-"} - {phase.phaseCode}
-                    </strong>
-                    <span style={{ color: "#475569", fontSize: "0.85rem" }}>{phase.phaseName}</span>
+                    <strong>{item.materialCode}</strong>
+                    <span style={{ color: "#475569", fontSize: "0.85rem" }}>{item.materialName}</span>
+                    <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
+                      UM: {item.uom ?? "N/D"}
+                    </span>
                   </span>
                 </td>
-                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>{phase.status}</td>
+                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>{item.status}</td>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                  {formatPercent(phase.progressPct)}
-                </td>
-                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                  {delayLabel(phase.isDelayed, phase.delayDays)}
-                </td>
-                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                  {blockedLabel(phase.isBlocked)}
-                </td>
-                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                  {externalLabel(phase.isExternal)}
-                </td>
-                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                  {qualityLabel(phase.hasQuality)}
+                  <span style={{ display: "grid", gap: "0.2rem" }}>
+                    <span>Teorico: {formatQty(item.theoreticalQty)}</span>
+                    <span>Prelevato: {formatQty(item.pickedQty)}</span>
+                    <span>Consumato: {formatQty(item.consumedQty)}</span>
+                    <strong>Differenza: {formatDiff(item.differenceQty)}</strong>
+                  </span>
                 </td>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                   <span style={{ display: "grid", gap: "0.2rem" }}>
-                    <span>Avvio: {formatDateTime(phase.startedAt)}</span>
-                    <span>Scadenza: {formatDateTime(phase.dueDate)}</span>
-                    <span>Fine: {formatDateTime(phase.completedAt)}</span>
+                    <span>Manuale: {boolLabel(item.hasManualChange)}</span>
+                    <span>Sostituzione: {boolLabel(item.hasSubstitution)}</span>
+                    <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
+                      {item.note ?? "Nessuna nota"}
+                    </span>
+                  </span>
+                </td>
+                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
+                  {item.hasLots ? item.lotCode ?? "Presente" : "No"}
+                </td>
+                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
+                  <span style={{ display: "grid", gap: "0.2rem" }}>
+                    <span>Fase: {item.externalPhaseCode ?? "N/D"}</span>
+                    <span>Conto lavoro: {item.subcontractingCode ?? "N/D"}</span>
                   </span>
                 </td>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                   <div style={{ display: "grid", gap: "0.35rem" }}>
                     <Link href={`/odp/${resolvedParams.odpId}`}>Dettaglio ODP</Link>
-                    <Link href={`/odp/${resolvedParams.odpId}/materiali`}>Materiali ODP</Link>
-                    <Link href={`/odp/${resolvedParams.odpId}?section=conto-lavoro`}>
-                      Conto lavoro (placeholder)
-                    </Link>
+                    <Link href={`/odp/${resolvedParams.odpId}/fasi`}>Fasi ODP</Link>
+                    <Link href={contoLavoroLink}>Conto lavoro</Link>
                   </div>
                 </td>
               </tr>
@@ -388,60 +392,20 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
           </tbody>
         </table>
 
-        {phases.phases.length === 0 ? (
+        {materials.items.length === 0 ? (
           <section style={{ margin: 0, padding: "1rem", display: "grid", gap: "0.4rem" }}>
-            <strong>Nessuna fase ODP disponibile</strong>
+            <strong>Nessun materiale ODP disponibile</strong>
             <p style={{ margin: 0, color: "#475569" }}>
-              {phases.emptyStateHint ??
-                "Il dominio non espone ancora fasi per l'ODP selezionato nel tenant corrente."}
+              {materials.emptyStateHint ??
+                "Il dominio non espone ancora materiali effettivi per l'ODP selezionato nel tenant corrente."}
             </p>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              <Link href={`/odp/${resolvedParams.odpId}/fasi`}>Reset filtri</Link>
+              <Link href={`/odp/${resolvedParams.odpId}/materiali`}>Reset filtri</Link>
               <Link href={`/odp/${resolvedParams.odpId}`}>Torna a dettaglio ODP</Link>
               <Link href="/odp">Torna a elenco ODP</Link>
             </div>
           </section>
         ) : null}
-      </section>
-
-      <section
-        style={{
-          border: "1px solid #d1d5db",
-          borderRadius: "0.75rem",
-          background: "#fff",
-          padding: "0.85rem",
-          display: "grid",
-          gap: "0.65rem",
-        }}
-      >
-        <strong>Timeline fasi (semplificata)</strong>
-        {phases.timeline.length > 0 ? (
-          <div style={{ display: "grid", gap: "0.55rem" }}>
-            {phases.timeline.map((event) => (
-              <article
-                key={event.id}
-                style={{
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "0.65rem",
-                  background: "#f8fafc",
-                  padding: "0.6rem",
-                  display: "grid",
-                  gap: "0.2rem",
-                }}
-              >
-                <strong>{event.title}</strong>
-                <span style={{ color: "#334155", fontSize: "0.9rem" }}>{event.detail}</span>
-                <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
-                  {formatDateTime(event.at)} - sorgente: {event.sourceTable}
-                </span>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p style={{ margin: 0, color: "#475569" }}>
-            Timeline temporale non disponibile con il dataset corrente.
-          </p>
-        )}
       </section>
 
       <section
@@ -455,22 +419,20 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
         <strong>Accessi rapidi</strong>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <Link href={`/odp/${resolvedParams.odpId}`}>Torna a dettaglio ODP</Link>
+          <Link href={`/odp/${resolvedParams.odpId}/fasi`}>Fasi ODP</Link>
+          <Link href={contoLavoroLink}>Conto lavoro ODP</Link>
           <Link href="/odp">Torna a elenco ODP</Link>
-          <Link href={`/odp/${resolvedParams.odpId}/materiali`}>Materiali ODP</Link>
-          <Link href={`/odp/${resolvedParams.odpId}?section=conto-lavoro`}>
-            Conto lavoro ODP (placeholder)
-          </Link>
           <Link href="/mes">MES (placeholder)</Link>
         </div>
       </section>
 
-      {phases.sourceTables.length > 0 ? (
+      {materials.sourceTables.length > 0 ? (
         <p style={{ margin: 0, color: "#334155", fontSize: "0.85rem" }}>
-          Sorgenti DB: <strong>{phases.sourceTables.join(", ")}</strong>
+          Sorgenti DB: <strong>{materials.sourceTables.join(", ")}</strong>
         </p>
       ) : null}
 
-      {phases.warnings.length > 0 ? (
+      {materials.warnings.length > 0 ? (
         <section
           style={{
             border: "1px solid #fde68a",
@@ -482,7 +444,7 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
           }}
         >
           <strong style={{ fontSize: "0.9rem" }}>Warning query</strong>
-          {phases.warnings.map((warning) => (
+          {materials.warnings.map((warning) => (
             <span key={warning} style={{ fontSize: "0.85rem", color: "#78350f" }}>
               {warning}
             </span>
@@ -492,4 +454,3 @@ export default async function OdpPhasesPage({ params, searchParams }: OdpPhasesP
     </section>
   );
 }
-

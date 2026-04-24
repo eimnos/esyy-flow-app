@@ -1670,3 +1670,588 @@ export const getTenantOdpPhases = async (
     };
   }
 };
+
+export type OdpMaterialDifferenceFilter = "all" | "positive" | "negative" | "none";
+
+export type OdpMaterialFilters = {
+  q?: string;
+  status?: string;
+  difference?: OdpMaterialDifferenceFilter;
+  manual?: OdpBinaryFilter;
+  substitution?: OdpBinaryFilter;
+  lots?: OdpBinaryFilter;
+  externalLink?: OdpBinaryFilter;
+};
+
+export type OdpMaterialItem = {
+  id: string;
+  tenantId: string;
+  odpId: string;
+  odpCode: string | null;
+  materialCode: string;
+  materialName: string;
+  uom: string | null;
+  status: string;
+  theoreticalQty: number | null;
+  pickedQty: number | null;
+  consumedQty: number | null;
+  differenceQty: number | null;
+  hasManualChange: boolean;
+  hasSubstitution: boolean;
+  lotCode: string | null;
+  hasLots: boolean;
+  externalPhaseCode: string | null;
+  subcontractingCode: string | null;
+  note: string | null;
+  sourceTable: string;
+};
+
+export type OdpMaterialSummary = {
+  total: number;
+  withDifference: number;
+  overConsumed: number;
+  underConsumed: number;
+  aligned: number;
+  manualChanges: number;
+  substitutions: number;
+  withLots: number;
+  externalLinked: number;
+  theoreticalQtyTotal: number | null;
+  pickedQtyTotal: number | null;
+  consumedQtyTotal: number | null;
+  differenceQtyTotal: number | null;
+};
+
+export type OdpMaterialResult = {
+  order: OdpListItem | null;
+  items: OdpMaterialItem[];
+  statuses: string[];
+  summary: OdpMaterialSummary;
+  sourceTables: string[];
+  warnings: string[];
+  emptyStateHint: string | null;
+  error: string | null;
+};
+
+type OdpMaterialTableCandidate = {
+  table: string;
+  idColumns: string[];
+  tenantColumns: string[];
+  orderColumns: string[];
+  orderCodeColumns: string[];
+  materialCodeColumns: string[];
+  materialNameColumns: string[];
+  uomColumns: string[];
+  statusColumns: string[];
+  theoreticalQtyColumns: string[];
+  pickedQtyColumns: string[];
+  consumedQtyColumns: string[];
+  differenceQtyColumns: string[];
+  manualColumns: string[];
+  substitutionColumns: string[];
+  lotColumns: string[];
+  lotsFlagColumns: string[];
+  externalPhaseColumns: string[];
+  subcontractColumns: string[];
+  noteColumns: string[];
+};
+
+const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
+  {
+    table: "production_order_materials",
+    idColumns: ["id", "production_order_material_id", "line_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
+    materialNameColumns: ["material_name", "item_name", "description", "name"],
+    uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status"],
+    theoreticalQtyColumns: ["theoretical_qty", "planned_qty", "required_qty", "qty_required", "bom_qty"],
+    pickedQtyColumns: ["picked_qty", "issued_qty", "withdrawn_qty", "qty_picked", "prelevato_qty"],
+    consumedQtyColumns: ["consumed_qty", "actual_consumed_qty", "used_qty", "qty_consumed"],
+    differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
+    manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
+    substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
+    lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
+    externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
+    subcontractColumns: [
+      "subcontracting_code",
+      "subcontract_code",
+      "terzista_document_no",
+      "supplier_document_no",
+    ],
+    noteColumns: ["note", "notes", "description", "remark"],
+  },
+  {
+    table: "production_order_material_movements",
+    idColumns: ["id", "production_order_material_movement_id", "movement_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
+    materialNameColumns: ["material_name", "item_name", "description", "name"],
+    uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status"],
+    theoreticalQtyColumns: ["theoretical_qty", "planned_qty", "required_qty", "qty_required", "bom_qty"],
+    pickedQtyColumns: ["picked_qty", "issued_qty", "withdrawn_qty", "qty_picked", "movement_qty"],
+    consumedQtyColumns: ["consumed_qty", "actual_consumed_qty", "used_qty", "qty_consumed"],
+    differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
+    manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
+    substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
+    lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
+    externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
+    subcontractColumns: [
+      "subcontracting_code",
+      "subcontract_code",
+      "terzista_document_no",
+      "supplier_document_no",
+    ],
+    noteColumns: ["note", "notes", "description", "remark"],
+  },
+  {
+    table: "production_material_consumptions",
+    idColumns: ["id", "production_material_consumption_id", "line_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
+    materialNameColumns: ["material_name", "item_name", "description", "name"],
+    uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status"],
+    theoreticalQtyColumns: ["theoretical_qty", "planned_qty", "required_qty", "qty_required", "bom_qty"],
+    pickedQtyColumns: ["picked_qty", "issued_qty", "withdrawn_qty", "qty_picked"],
+    consumedQtyColumns: ["consumed_qty", "actual_consumed_qty", "used_qty", "qty_consumed"],
+    differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
+    manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
+    substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
+    lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
+    externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
+    subcontractColumns: [
+      "subcontracting_code",
+      "subcontract_code",
+      "terzista_document_no",
+      "supplier_document_no",
+    ],
+    noteColumns: ["note", "notes", "description", "remark"],
+  },
+  {
+    table: "production_order_material_overviews",
+    idColumns: ["id", "production_order_material_overview_id", "line_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
+    materialNameColumns: ["material_name", "item_name", "description", "name"],
+    uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status"],
+    theoreticalQtyColumns: ["theoretical_qty", "planned_qty", "required_qty", "qty_required", "bom_qty"],
+    pickedQtyColumns: ["picked_qty", "issued_qty", "withdrawn_qty", "qty_picked"],
+    consumedQtyColumns: ["consumed_qty", "actual_consumed_qty", "used_qty", "qty_consumed"],
+    differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
+    manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
+    substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
+    lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
+    externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
+    subcontractColumns: [
+      "subcontracting_code",
+      "subcontract_code",
+      "terzista_document_no",
+      "supplier_document_no",
+    ],
+    noteColumns: ["note", "notes", "description", "remark"],
+  },
+];
+
+const normalizeDifferenceFilter = (value: string | undefined): OdpMaterialDifferenceFilter => {
+  if (value === "positive" || value === "negative" || value === "none") {
+    return value;
+  }
+  return "all";
+};
+
+const roundQty = (value: number | null) => {
+  if (value === null || !Number.isFinite(value)) {
+    return null;
+  }
+  return Math.round(value * 1000) / 1000;
+};
+
+const sumQtyOrNull = (values: Array<number | null>) => {
+  const normalized = values.filter((value): value is number => value !== null && Number.isFinite(value));
+  if (normalized.length === 0) {
+    return null;
+  }
+  return roundQty(normalized.reduce((sum, value) => sum + value, 0));
+};
+
+const queryMaterialRowsByOrder = async (
+  candidate: OdpMaterialTableCandidate,
+  tenantId: string,
+  odpId: string,
+): Promise<QueryRowsResult> => {
+  const admin = getSupabaseAdminClient();
+
+  for (const orderColumn of candidate.orderColumns) {
+    for (const tenantColumn of candidate.tenantColumns) {
+      const { data, error } = await admin
+        .from(candidate.table)
+        .select("*")
+        .eq(orderColumn, odpId)
+        .eq(tenantColumn, tenantId)
+        .limit(SAFE_LIST_LIMIT);
+
+      if (!error) {
+        return {
+          exists: true,
+          rows: (data ?? []) as RawRow[],
+          warning: null,
+        };
+      }
+
+      const message = error.message ?? "Unknown query error";
+      if (
+        looksLikeMissingTable(message) ||
+        looksLikeMissingColumn(message, orderColumn) ||
+        looksLikeMissingColumn(message, tenantColumn)
+      ) {
+        continue;
+      }
+
+      return {
+        exists: true,
+        rows: [],
+        warning: `Errore su ${candidate.table}: ${message}`,
+      };
+    }
+  }
+
+  for (const orderColumn of candidate.orderColumns) {
+    const fallback = await getSupabaseAdminClient()
+      .from(candidate.table)
+      .select("*")
+      .eq(orderColumn, odpId)
+      .limit(SAFE_LIST_LIMIT);
+
+    if (!fallback.error) {
+      const rows = ((fallback.data ?? []) as RawRow[]).filter((row) => {
+        const rowTenant = readStringFromKeys(row, candidate.tenantColumns);
+        return rowTenant === tenantId;
+      });
+      return {
+        exists: true,
+        rows,
+        warning: null,
+      };
+    }
+
+    const message = fallback.error.message ?? "Unknown query error";
+    if (looksLikeMissingTable(message) || looksLikeMissingColumn(message, orderColumn)) {
+      continue;
+    }
+
+    return {
+      exists: true,
+      rows: [],
+      warning: `Errore su ${candidate.table}: ${message}`,
+    };
+  }
+
+  return {
+    exists: false,
+    rows: [],
+    warning: null,
+  };
+};
+
+const normalizeMaterialRow = (
+  row: RawRow,
+  candidate: OdpMaterialTableCandidate,
+  tenantId: string,
+  odpId: string,
+  fallbackOrderCode: string | null,
+  rowIndex: number,
+): OdpMaterialItem | null => {
+  const id =
+    readStringFromKeys(row, candidate.idColumns) || `${candidate.table}-material-${rowIndex + 1}`;
+  if (!id) {
+    return null;
+  }
+
+  const materialCode =
+    readStringFromKeys(row, candidate.materialCodeColumns) || `MAT-${rowIndex + 1}`;
+  const materialName = readStringFromKeys(row, candidate.materialNameColumns) || materialCode;
+  const status = readStringFromKeys(row, candidate.statusColumns) || "unknown";
+  const theoreticalQty = roundQty(readNumberFromKeys(row, candidate.theoreticalQtyColumns));
+  const pickedQty = roundQty(readNumberFromKeys(row, candidate.pickedQtyColumns));
+  const consumedQty = roundQty(readNumberFromKeys(row, candidate.consumedQtyColumns));
+  const explicitDiff = roundQty(readNumberFromKeys(row, candidate.differenceQtyColumns));
+  const derivedDiff =
+    consumedQty !== null && theoreticalQty !== null ? roundQty(consumedQty - theoreticalQty) : null;
+  const differenceQty = explicitDiff ?? derivedDiff;
+
+  const lotCode = readStringFromKeys(row, candidate.lotColumns) || null;
+  const hasLots = (readBooleanFromKeys(row, candidate.lotsFlagColumns) ?? false) || lotCode !== null;
+  const externalPhaseCode = readStringFromKeys(row, candidate.externalPhaseColumns) || null;
+  const subcontractingCode = readStringFromKeys(row, candidate.subcontractColumns) || null;
+
+  const hasRelevantData =
+    Boolean(materialCode) ||
+    theoreticalQty !== null ||
+    pickedQty !== null ||
+    consumedQty !== null ||
+    lotCode !== null ||
+    externalPhaseCode !== null ||
+    subcontractingCode !== null;
+
+  if (!hasRelevantData) {
+    return null;
+  }
+
+  return {
+    id,
+    tenantId: readStringFromKeys(row, candidate.tenantColumns) || tenantId,
+    odpId,
+    odpCode: readStringFromKeys(row, candidate.orderCodeColumns) || fallbackOrderCode,
+    materialCode,
+    materialName,
+    uom: readStringFromKeys(row, candidate.uomColumns) || null,
+    status,
+    theoreticalQty,
+    pickedQty,
+    consumedQty,
+    differenceQty,
+    hasManualChange: readBooleanFromKeys(row, candidate.manualColumns) ?? false,
+    hasSubstitution: readBooleanFromKeys(row, candidate.substitutionColumns) ?? false,
+    lotCode,
+    hasLots,
+    externalPhaseCode,
+    subcontractingCode,
+    note: readStringFromKeys(row, candidate.noteColumns) || null,
+    sourceTable: candidate.table,
+  };
+};
+
+const dedupeMaterials = (items: OdpMaterialItem[]) => {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = [
+      item.sourceTable,
+      item.id,
+      item.materialCode,
+      item.lotCode ?? "",
+      item.externalPhaseCode ?? "",
+    ].join(":");
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+};
+
+const sortMaterials = (items: OdpMaterialItem[]) =>
+  [...items].sort((left, right) => {
+    if (left.hasManualChange !== right.hasManualChange) {
+      return left.hasManualChange ? -1 : 1;
+    }
+    if (left.hasSubstitution !== right.hasSubstitution) {
+      return left.hasSubstitution ? -1 : 1;
+    }
+
+    const leftDiff = Math.abs(left.differenceQty ?? 0);
+    const rightDiff = Math.abs(right.differenceQty ?? 0);
+    if (leftDiff !== rightDiff) {
+      return rightDiff - leftDiff;
+    }
+
+    return left.materialCode.localeCompare(right.materialCode, "it");
+  });
+
+const matchesDifferenceFilter = (differenceQty: number | null, filter: OdpMaterialDifferenceFilter) => {
+  if (filter === "all") {
+    return true;
+  }
+
+  const diff = differenceQty ?? 0;
+  if (filter === "positive") {
+    return diff > 0;
+  }
+  if (filter === "negative") {
+    return diff < 0;
+  }
+  return Math.abs(diff) < 0.0001;
+};
+
+const applyMaterialFilters = (items: OdpMaterialItem[], filters: OdpMaterialFilters) => {
+  const query = (filters.q ?? "").trim().toLowerCase();
+  const selectedStatus = (filters.status ?? "all").trim().toLowerCase();
+  const differenceFilter = normalizeDifferenceFilter(filters.difference);
+  const manualFilter = normalizeBinaryFilter(filters.manual);
+  const substitutionFilter = normalizeBinaryFilter(filters.substitution);
+  const lotsFilter = normalizeBinaryFilter(filters.lots);
+  const externalFilter = normalizeBinaryFilter(filters.externalLink);
+
+  return items.filter((item) => {
+    if (query) {
+      const haystack = [
+        item.materialCode,
+        item.materialName,
+        item.status,
+        item.lotCode ?? "",
+        item.externalPhaseCode ?? "",
+        item.subcontractingCode ?? "",
+        item.note ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(query)) {
+        return false;
+      }
+    }
+
+    if (selectedStatus !== "all" && item.status.toLowerCase() !== selectedStatus) {
+      return false;
+    }
+
+    if (!matchesDifferenceFilter(item.differenceQty, differenceFilter)) {
+      return false;
+    }
+    if (!matchesBinaryFilter(item.hasManualChange, manualFilter)) {
+      return false;
+    }
+    if (!matchesBinaryFilter(item.hasSubstitution, substitutionFilter)) {
+      return false;
+    }
+    if (!matchesBinaryFilter(item.hasLots, lotsFilter)) {
+      return false;
+    }
+
+    const hasExternalLink = Boolean(item.externalPhaseCode || item.subcontractingCode);
+    if (!matchesBinaryFilter(hasExternalLink, externalFilter)) {
+      return false;
+    }
+
+    return true;
+  });
+};
+
+const buildMaterialSummary = (items: OdpMaterialItem[]): OdpMaterialSummary => {
+  const withDifference = items.filter(
+    (item) => item.differenceQty !== null && Math.abs(item.differenceQty) >= 0.0001,
+  ).length;
+  const overConsumed = items.filter((item) => (item.differenceQty ?? 0) > 0).length;
+  const underConsumed = items.filter((item) => (item.differenceQty ?? 0) < 0).length;
+  const aligned = items.filter(
+    (item) => item.differenceQty !== null && Math.abs(item.differenceQty) < 0.0001,
+  ).length;
+
+  return {
+    total: items.length,
+    withDifference,
+    overConsumed,
+    underConsumed,
+    aligned,
+    manualChanges: items.filter((item) => item.hasManualChange).length,
+    substitutions: items.filter((item) => item.hasSubstitution).length,
+    withLots: items.filter((item) => item.hasLots).length,
+    externalLinked: items.filter((item) => Boolean(item.externalPhaseCode || item.subcontractingCode)).length,
+    theoreticalQtyTotal: sumQtyOrNull(items.map((item) => item.theoreticalQty)),
+    pickedQtyTotal: sumQtyOrNull(items.map((item) => item.pickedQty)),
+    consumedQtyTotal: sumQtyOrNull(items.map((item) => item.consumedQty)),
+    differenceQtyTotal: sumQtyOrNull(items.map((item) => item.differenceQty)),
+  };
+};
+
+const buildMaterials = async (
+  tenantId: string,
+  odpId: string,
+  filters: OdpMaterialFilters,
+): Promise<OdpMaterialResult> => {
+  const detail = await getTenantOdpById(tenantId, odpId);
+  const warnings = [...detail.warnings];
+  const sourceTables = new Set<string>();
+  const normalized: OdpMaterialItem[] = [];
+  const fallbackOrderCode = detail.order?.code ?? null;
+
+  for (const candidate of ODP_MATERIAL_TABLE_CANDIDATES) {
+    const result = await queryMaterialRowsByOrder(candidate, tenantId, odpId);
+    if (result.warning) {
+      warnings.push(result.warning);
+    }
+    if (!result.exists) {
+      continue;
+    }
+
+    sourceTables.add(candidate.table);
+    result.rows.forEach((row, index) => {
+      const item = normalizeMaterialRow(row, candidate, tenantId, odpId, fallbackOrderCode, index);
+      if (item) {
+        normalized.push(item);
+      }
+    });
+  }
+
+  const sorted = sortMaterials(dedupeMaterials(normalized));
+  const items = applyMaterialFilters(sorted, filters);
+  const statuses = uniqueValues(sorted.map((item) => item.status));
+
+  let emptyStateHint: string | null = null;
+  if (sorted.length === 0) {
+    emptyStateHint =
+      sourceTables.size === 0
+        ? "Nessuna sorgente materiali ODP disponibile nel DB esposto."
+        : "Nessun materiale disponibile per l'ODP selezionato nel tenant corrente.";
+  } else if (items.length === 0) {
+    emptyStateHint = "Nessun materiale trovato con i filtri correnti.";
+  }
+
+  return {
+    order: detail.order,
+    items,
+    statuses,
+    summary: buildMaterialSummary(items),
+    sourceTables: [...sourceTables].sort((left, right) => left.localeCompare(right, "it")),
+    warnings,
+    emptyStateHint,
+    error: detail.error,
+  };
+};
+
+export const getTenantOdpMaterials = async (
+  tenantId: string,
+  odpId: string,
+  filters: OdpMaterialFilters,
+): Promise<OdpMaterialResult> => {
+  if (!tenantId || !odpId) {
+    return {
+      order: null,
+      items: [],
+      statuses: [],
+      summary: buildMaterialSummary([]),
+      sourceTables: [],
+      warnings: [],
+      emptyStateHint: null,
+      error: "Parametri non validi.",
+    };
+  }
+
+  try {
+    return await buildMaterials(tenantId, odpId, filters);
+  } catch (caughtError) {
+    return {
+      order: null,
+      items: [],
+      statuses: [],
+      summary: buildMaterialSummary([]),
+      sourceTables: [],
+      warnings: [],
+      emptyStateHint: null,
+      error: caughtError instanceof Error ? caughtError.message : "Errore inatteso.",
+    };
+  }
+};

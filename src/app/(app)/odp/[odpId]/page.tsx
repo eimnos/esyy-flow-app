@@ -106,9 +106,7 @@ export default async function OdpDetailPage({
   const order = detail.order;
   const commessaLink = order?.commessaId ? `/commesse/${order.commessaId}` : null;
   const fasiLink = `/odp/${resolvedParams.odpId}/fasi`;
-  const materialiLink = order?.commessaId
-    ? `/commesse/${order.commessaId}/approvvigionamenti`
-    : `/odp/${resolvedParams.odpId}?section=materiali`;
+  const materialiLink = `/odp/${resolvedParams.odpId}/materiali`;
   const contoLavoroLink = order?.commessaId
     ? `/commesse/${order.commessaId}/conto-lavoro`
     : `/odp/${resolvedParams.odpId}?section=conto-lavoro`;

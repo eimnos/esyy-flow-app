@@ -409,15 +409,7 @@ export default async function OdpPage({ searchParams }: OdpPageProps) {
                     <div style={{ display: "grid", gap: "0.35rem" }}>
                       <Link href={`/odp/${order.id}`}>Dettaglio ODP</Link>
                       <Link href={`/odp/${order.id}/fasi`}>Fasi ODP</Link>
-                      {order.commessaId ? (
-                        <Link href={`/commesse/${order.commessaId}/approvvigionamenti`}>
-                          Materiali
-                        </Link>
-                      ) : (
-                        <Link href={`/odp/${order.id}?section=materiali`}>
-                          Materiali (placeholder)
-                        </Link>
-                      )}
+                      <Link href={`/odp/${order.id}/materiali`}>Materiali ODP</Link>
                       {order.commessaId ? (
                         <Link href={`/commesse/${order.commessaId}/conto-lavoro`}>Conto lavoro</Link>
                       ) : (
