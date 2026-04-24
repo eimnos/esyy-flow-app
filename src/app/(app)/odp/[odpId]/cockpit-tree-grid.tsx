@@ -366,20 +366,7 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
       </section>
 
       {selectedNode && drawerOpen ? (
-        <>
-          <button
-            aria-label="Chiudi drawer"
-            onClick={() => setDrawerOpen(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              border: "none",
-              background: "rgba(15, 23, 42, 0.22)",
-              zIndex: 50,
-              cursor: "pointer",
-            }}
-          />
-          <aside
+        <aside
             style={{
               position: "fixed",
               top: "72px",
@@ -487,7 +474,6 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
               </div>
             </section>
           </aside>
-        </>
       ) : null}
     </>
   );
