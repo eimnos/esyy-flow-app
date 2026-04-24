@@ -297,11 +297,11 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
                             fontSize: "0.8rem",
                           }}
                         >
-                          {row.isExpanded ? "▾" : "▸"}
+                          {row.isExpanded ? "v" : ">"}
                         </button>
                       ) : (
                         <span style={{ minWidth: "1.45rem", color: "#94a3b8", textAlign: "center" }}>
-                          •
+                          .
                         </span>
                       )}
 

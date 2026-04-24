@@ -2453,7 +2453,24 @@ const buildCockpitNodes = (
   const phaseNodeIdById = new Map<string, string>();
   const phaseNodeIdsInOrder: string[] = [];
   const phaseLabelByNodeId = new Map<string, string>();
-  const materialCountByPhaseNode = new Map<string, number>();
+  const phaseNodeStatsById = new Map<
+    string,
+    { materials: number; criticalMaterials: number; missionEvents: number }
+  >();
+
+  const getPhaseNodeStats = (phaseNodeId: string) => {
+    const existing = phaseNodeStatsById.get(phaseNodeId);
+    if (existing) {
+      return existing;
+    }
+    const created = {
+      materials: 0,
+      criticalMaterials: 0,
+      missionEvents: 0,
+    };
+    phaseNodeStatsById.set(phaseNodeId, created);
+    return created;
+  };
 
   phases.phases.forEach((phase, index) => {
     const phaseId = `phase:${phase.id}:${index + 1}`;
@@ -2504,7 +2521,7 @@ const buildCockpitNodes = (
     phaseNodeIdById.set(phase.id, phaseId);
     phaseNodeIdsInOrder.push(phaseId);
     phaseLabelByNodeId.set(phaseId, `${phase.phaseCode} - ${phase.phaseName}`);
-    materialCountByPhaseNode.set(phaseId, 0);
+    getPhaseNodeStats(phaseId);
 
     const codeTokens = [
       phase.phaseCode,
@@ -2521,6 +2538,7 @@ const buildCockpitNodes = (
   });
 
   const materialNodeIdByItemId = new Map<string, string>();
+  const materialPhaseNodeIdByItemId = new Map<string, string>();
 
   materials.items.forEach((material, index) => {
     let parentId = rootId;
@@ -2548,9 +2566,9 @@ const buildCockpitNodes = (
 
     if (parentId === rootId && phaseNodeIdsInOrder.length > 0) {
       let selectedPhaseNode = phaseNodeIdsInOrder[0];
-      let minCount = materialCountByPhaseNode.get(selectedPhaseNode) ?? 0;
+      let minCount = getPhaseNodeStats(selectedPhaseNode).materials;
       phaseNodeIdsInOrder.forEach((phaseNodeId) => {
-        const currentCount = materialCountByPhaseNode.get(phaseNodeId) ?? 0;
+        const currentCount = getPhaseNodeStats(phaseNodeId).materials;
         if (currentCount < minCount) {
           minCount = currentCount;
           selectedPhaseNode = phaseNodeId;
@@ -2560,16 +2578,20 @@ const buildCockpitNodes = (
       associationSource = "balanced-fallback";
     }
 
+    const isCriticalMaterial = materialIsCritical(material);
+
     if (parentId !== rootId) {
-      materialCountByPhaseNode.set(
-        parentId,
-        (materialCountByPhaseNode.get(parentId) ?? 0) + 1,
-      );
+      const phaseStats = getPhaseNodeStats(parentId);
+      phaseStats.materials += 1;
+      if (isCriticalMaterial) {
+        phaseStats.criticalMaterials += 1;
+      }
+      materialPhaseNodeIdByItemId.set(material.id, parentId);
       parentPhaseLabel = phaseLabelByNodeId.get(parentId) ?? parentPhaseLabel;
     }
 
     const materialSignals: OdpCockpitSignal[] = [];
-    if (materialIsCritical(material)) {
+    if (isCriticalMaterial) {
       materialSignals.push("critical_material");
     }
     if (material.externalPhaseCode || material.subcontractingCode) {
@@ -2638,6 +2660,10 @@ const buildCockpitNodes = (
       }
     }
 
+    if (parentId !== rootId) {
+      getPhaseNodeStats(parentId).missionEvents += 1;
+    }
+
     addNode({
       id: `event:phase:${event.id}:${index + 1}`,
       parentId,
@@ -2676,6 +2702,10 @@ const buildCockpitNodes = (
       return;
     }
     const parentId = materialNodeIdByItemId.get(material.id) ?? rootId;
+    const parentPhaseNodeId = materialPhaseNodeIdByItemId.get(material.id) ?? null;
+    if (parentPhaseNodeId) {
+      getPhaseNodeStats(parentPhaseNodeId).missionEvents += 1;
+    }
     const movementLabel = material.lotCode
       ? `Movimento lotto ${material.lotCode}`
       : material.subcontractingCode
@@ -2711,6 +2741,35 @@ const buildCockpitNodes = (
       ],
       sourceTable: material.sourceTable,
     });
+  });
+
+  nodes.forEach((node) => {
+    if (node.kind !== "phase") {
+      return;
+    }
+    const stats = phaseNodeStatsById.get(node.id) ?? {
+      materials: 0,
+      criticalMaterials: 0,
+      missionEvents: 0,
+    };
+
+    node.metrics = [
+      ...node.metrics,
+      { label: "Materiali", value: `${stats.materials}` },
+      { label: "Critici", value: `${stats.criticalMaterials}` },
+      { label: "Missioni/eventi", value: `${stats.missionEvents}` },
+    ];
+
+    node.detailLines = [
+      `Materiali collegati: ${stats.materials}`,
+      `Materiali critici: ${stats.criticalMaterials}`,
+      `Missioni/eventi collegati: ${stats.missionEvents}`,
+      ...node.detailLines,
+    ];
+
+    if (stats.criticalMaterials > 0 && !node.signals.includes("critical_material")) {
+      node.signals = normalizeSignalList([...node.signals, "critical_material"]);
+    }
   });
 
   return {
