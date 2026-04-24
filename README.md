@@ -348,3 +348,11 @@ cd esyy-flow-app
 - evidenza operativa in elenco: avanzamento, ritardo, criticita, legame con commessa, origine, conteggio fasi
 - quick link riga verso dettaglio ODP, fasi, materiali e conto lavoro (con fallback placeholder)
 - placeholder strutturato dettaglio ODP su `/odp/[odpId]` in attesa di MD-23
+
+## Scope MD-23
+
+- evoluzione `/odp/[odpId]` da placeholder a dettaglio ODP read-only
+- testata ODP con stato, avanzamento, origine e sorgente dati
+- blocchi sintetici per quantita/date/criticita e legame commessa
+- accessi rapidi verso fasi, materiali e conto lavoro (con fallback placeholder dove necessario)
+- nessun editing operativo e nessuna logica MES introdotta in questa wave
