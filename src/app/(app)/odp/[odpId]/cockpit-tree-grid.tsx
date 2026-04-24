@@ -12,6 +12,7 @@ type OdpCockpitTreeGridProps = {
 type CockpitTreeRow = {
   node: OdpCockpitNode;
   depth: number;
+  childCount: number;
   hasChildren: boolean;
   isExpanded: boolean;
 };
@@ -66,38 +67,58 @@ const formatNodeProgress = (value: number | null) => {
   return `${Math.round(value)}%`;
 };
 
+const buildChildMap = (nodes: OdpCockpitNode[]) => {
+  const map = new Map<string | null, OdpCockpitNode[]>();
+  for (const node of nodes) {
+    const existing = map.get(node.parentId) ?? [];
+    existing.push(node);
+    map.set(node.parentId, existing);
+  }
+  for (const [key, children] of map.entries()) {
+    map.set(
+      key,
+      [...children].sort((left, right) => {
+        if (left.sortOrder !== right.sortOrder) {
+          return left.sortOrder - right.sortOrder;
+        }
+        return left.label.localeCompare(right.label, "it");
+      }),
+    );
+  }
+  return map;
+};
+
+const buildInitialExpandedIds = (
+  cockpit: OdpCockpitResult,
+  childMap: Map<string | null, OdpCockpitNode[]>,
+) => {
+  const initial = new Set<string>();
+  if (cockpit.rootNodeId) {
+    initial.add(cockpit.rootNodeId);
+  }
+
+  cockpit.nodes.forEach((node) => {
+    const childCount = (childMap.get(node.id) ?? []).length;
+    if (node.kind === "phase") {
+      initial.add(node.id);
+    }
+    if (node.kind === "material" && childCount > 0) {
+      initial.add(node.id);
+    }
+  });
+
+  return initial;
+};
+
 export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps) {
   const initialSelectedId = cockpit.rootNodeId ?? cockpit.nodes[0]?.id ?? null;
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
-    if (cockpit.rootNodeId) {
-      initial.add(cockpit.rootNodeId);
-    }
-    return initial;
-  });
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
+    buildInitialExpandedIds(cockpit, buildChildMap(cockpit.nodes)),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
   const [drawerOpen, setDrawerOpen] = useState(true);
 
-  const childMap = useMemo(() => {
-    const map = new Map<string | null, OdpCockpitNode[]>();
-    for (const node of cockpit.nodes) {
-      const existing = map.get(node.parentId) ?? [];
-      existing.push(node);
-      map.set(node.parentId, existing);
-    }
-    for (const [key, nodes] of map.entries()) {
-      map.set(
-        key,
-        [...nodes].sort((left, right) => {
-          if (left.sortOrder !== right.sortOrder) {
-            return left.sortOrder - right.sortOrder;
-          }
-          return left.label.localeCompare(right.label, "it");
-        }),
-      );
-    }
-    return map;
-  }, [cockpit.nodes]);
+  const childMap = useMemo(() => buildChildMap(cockpit.nodes), [cockpit.nodes]);
 
   const rows = useMemo(() => {
     const flattened: CockpitTreeRow[] = [];
@@ -105,11 +126,13 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
     const visit = (parentId: string | null, depth: number) => {
       const children = childMap.get(parentId) ?? [];
       for (const child of children) {
-        const hasChildren = (childMap.get(child.id) ?? []).length > 0;
+        const childCount = (childMap.get(child.id) ?? []).length;
+        const hasChildren = childCount > 0;
         const isExpanded = expandedIds.has(child.id);
         flattened.push({
           node: child,
           depth,
+          childCount,
           hasChildren,
           isExpanded,
         });
@@ -133,21 +156,21 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
 
   const selectedNode = selectedId ? nodeById.get(selectedId) ?? null : null;
 
-  const onRowClick = (row: CockpitTreeRow) => {
-    setSelectedId(row.node.id);
-    setDrawerOpen(true);
-    if (!row.hasChildren) {
-      return;
-    }
+  const toggleNode = (nodeId: string) => {
     setExpandedIds((previous) => {
       const next = new Set(previous);
-      if (next.has(row.node.id)) {
-        next.delete(row.node.id);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
       } else {
-        next.add(row.node.id);
+        next.add(nodeId);
       }
       return next;
     });
+  };
+
+  const onRowSelect = (nodeId: string) => {
+    setSelectedId(nodeId);
+    setDrawerOpen(true);
   };
 
   if (cockpit.nodes.length === 0) {
@@ -191,8 +214,8 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
         >
           <strong>Cockpit tree-grid ODP</strong>
           <p style={{ margin: 0, color: "#475569", fontSize: "0.9rem" }}>
-            Click sulla riga per selezionare ed espandere/collassare i livelli ODP, fasi,
-            materiali e movimenti/eventi collegati.
+            Interazioni: usa l&apos;icona laterale per espandere/collassare il nodo; click sulla
+            riga per aprire il dettaglio nel drawer.
           </p>
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
             {(Object.keys(signalMeta) as OdpCockpitSignal[]).map((signal) => (
@@ -239,7 +262,7 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
               return (
                 <tr
                   key={row.node.id}
-                  onClick={() => onRowClick(row)}
+                  onClick={() => onRowSelect(row.node.id)}
                   style={{
                     cursor: "pointer",
                     background: selected ? "#eef2ff" : "transparent",
@@ -254,16 +277,34 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
                         paddingLeft: `${row.depth * 18}px`,
                       }}
                     >
-                      <span
-                        style={{
-                          minWidth: "2.4rem",
-                          color: "#64748b",
-                          fontSize: "0.78rem",
-                          fontFamily: "monospace",
-                        }}
-                      >
-                        {row.hasChildren ? (row.isExpanded ? "[-]" : "[+]") : "[.]"}
-                      </span>
+                      {row.hasChildren ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleNode(row.node.id);
+                          }}
+                          aria-label={row.isExpanded ? "Collassa nodo" : "Espandi nodo"}
+                          style={{
+                            minWidth: "1.45rem",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "0.3rem",
+                            background: "#ffffff",
+                            color: "#334155",
+                            cursor: "pointer",
+                            lineHeight: 1,
+                            padding: "0.1rem 0.2rem",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          {row.isExpanded ? "v" : ">"}
+                        </button>
+                      ) : (
+                        <span style={{ minWidth: "1.45rem", color: "#94a3b8", textAlign: "center" }}>
+                          .
+                        </span>
+                      )}
+
                       <span
                         style={{
                           fontSize: "0.72rem",
@@ -285,6 +326,11 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
                             {row.node.secondaryLabel}
                           </span>
                         ) : null}
+                        {row.hasChildren ? (
+                          <span style={{ color: "#64748b", fontSize: "0.75rem" }}>
+                            {row.childCount} nodi collegati
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </td>
@@ -293,7 +339,7 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
                     <div style={{ display: "grid", gap: "0.28rem" }}>
                       <span style={{ color: "#334155" }}>
                         Stato: <strong>{row.node.status ?? "N/D"}</strong>
-                        {" · "}Avanz.: <strong>{formatNodeProgress(row.node.progressPct)}</strong>
+                        {" - "}Avanz.: <strong>{formatNodeProgress(row.node.progressPct)}</strong>
                       </span>
                       <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
                         {row.node.signals.length > 0 ? (
@@ -367,113 +413,115 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
 
       {selectedNode && drawerOpen ? (
         <aside
-            style={{
-              position: "fixed",
-              top: "72px",
-              right: 0,
-              bottom: 0,
-              width: "min(420px, 95vw)",
-              background: "#ffffff",
-              borderLeft: "1px solid #cbd5e1",
-              zIndex: 60,
-              padding: "0.9rem",
-              display: "grid",
-              alignContent: "start",
-              gap: "0.75rem",
-              overflowY: "auto",
-            }}
-          >
-            <header style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem" }}>
-              <div style={{ display: "grid", gap: "0.22rem" }}>
-                <span style={{ color: "#64748b", fontSize: "0.78rem" }}>
-                  {kindLabel[selectedNode.kind]}
-                </span>
-                <strong style={{ fontSize: "1.02rem" }}>{selectedNode.label}</strong>
-                {selectedNode.secondaryLabel ? (
-                  <span style={{ color: "#475569" }}>{selectedNode.secondaryLabel}</span>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.45rem",
-                  background: "#f8fafc",
-                  padding: "0.34rem 0.52rem",
-                  cursor: "pointer",
-                  height: "fit-content",
-                }}
-              >
-                Chiudi
-              </button>
-            </header>
-
-            <section
+          style={{
+            position: "fixed",
+            top: "72px",
+            right: 0,
+            bottom: 0,
+            width: "min(420px, 95vw)",
+            background: "#ffffff",
+            borderLeft: "1px solid #cbd5e1",
+            zIndex: 60,
+            padding: "0.9rem",
+            display: "grid",
+            alignContent: "start",
+            gap: "0.75rem",
+            overflowY: "auto",
+          }}
+        >
+          <header style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem" }}>
+            <div style={{ display: "grid", gap: "0.22rem" }}>
+              <span style={{ color: "#64748b", fontSize: "0.78rem" }}>
+                {kindLabel[selectedNode.kind]}
+              </span>
+              <strong style={{ fontSize: "1.02rem" }}>{selectedNode.label}</strong>
+              {selectedNode.secondaryLabel ? (
+                <span style={{ color: "#475569" }}>{selectedNode.secondaryLabel}</span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(false)}
               style={{
-                border: "1px solid #e2e8f0",
-                borderRadius: "0.62rem",
+                border: "1px solid #cbd5e1",
+                borderRadius: "0.45rem",
                 background: "#f8fafc",
-                padding: "0.62rem",
-                display: "grid",
-                gap: "0.35rem",
+                padding: "0.34rem 0.52rem",
+                cursor: "pointer",
+                height: "fit-content",
               }}
             >
-              <span>
-                Stato: <strong>{selectedNode.status ?? "N/D"}</strong>
-              </span>
-              <span>
-                Avanzamento: <strong>{formatNodeProgress(selectedNode.progressPct)}</strong>
-              </span>
-              <span>
-                Sorgente: <strong>{selectedNode.sourceTable ?? "N/D"}</strong>
-              </span>
-            </section>
+              Chiudi
+            </button>
+          </header>
 
-            <section style={{ display: "grid", gap: "0.38rem" }}>
-              <strong>Metriche</strong>
-              {selectedNode.metrics.length > 0 ? (
-                selectedNode.metrics.map((metric) => (
-                  <span key={`${selectedNode.id}-${metric.label}`}>
-                    {metric.label}: <strong>{metric.value}</strong>
-                  </span>
-                ))
-              ) : (
-                <span style={{ color: "#64748b" }}>Nessuna metrica disponibile.</span>
-              )}
-            </section>
+          <section
+            style={{
+              border: "1px solid #e2e8f0",
+              borderRadius: "0.62rem",
+              background: "#f8fafc",
+              padding: "0.62rem",
+              display: "grid",
+              gap: "0.35rem",
+            }}
+          >
+            <span>
+              Stato: <strong>{selectedNode.status ?? "N/D"}</strong>
+            </span>
+            <span>
+              Avanzamento: <strong>{formatNodeProgress(selectedNode.progressPct)}</strong>
+            </span>
+            <span>
+              Sorgente: <strong>{selectedNode.sourceTable ?? "N/D"}</strong>
+            </span>
+          </section>
 
-            <section style={{ display: "grid", gap: "0.38rem" }}>
-              <strong>Dettagli</strong>
-              {selectedNode.detailLines.length > 0 ? (
-                selectedNode.detailLines.map((line) => <span key={`${selectedNode.id}-${line}`}>{line}</span>)
-              ) : (
-                <span style={{ color: "#64748b" }}>Nessun dettaglio disponibile.</span>
-              )}
-            </section>
+          <section style={{ display: "grid", gap: "0.38rem" }}>
+            <strong>Metriche</strong>
+            {selectedNode.metrics.length > 0 ? (
+              selectedNode.metrics.map((metric) => (
+                <span key={`${selectedNode.id}-${metric.label}`}>
+                  {metric.label}: <strong>{metric.value}</strong>
+                </span>
+              ))
+            ) : (
+              <span style={{ color: "#64748b" }}>Nessuna metrica disponibile.</span>
+            )}
+          </section>
 
-            <section style={{ display: "grid", gap: "0.38rem" }}>
-              <strong>Rimandi rapidi</strong>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.48rem" }}>
-                {selectedNode.links.map((link) => (
-                  <Link
-                    key={`${selectedNode.id}-drawer-${link.key}-${link.href}`}
-                    href={link.href}
-                    style={{
-                      textDecoration: "none",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.45rem",
-                      padding: "0.18rem 0.5rem",
-                      color: "#1e293b",
-                      background: "#f8fafc",
-                    }}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </section>
-          </aside>
+          <section style={{ display: "grid", gap: "0.38rem" }}>
+            <strong>Dettagli</strong>
+            {selectedNode.detailLines.length > 0 ? (
+              selectedNode.detailLines.map((line) => (
+                <span key={`${selectedNode.id}-${line}`}>{line}</span>
+              ))
+            ) : (
+              <span style={{ color: "#64748b" }}>Nessun dettaglio disponibile.</span>
+            )}
+          </section>
+
+          <section style={{ display: "grid", gap: "0.38rem" }}>
+            <strong>Rimandi rapidi</strong>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.48rem" }}>
+              {selectedNode.links.map((link) => (
+                <Link
+                  key={`${selectedNode.id}-drawer-${link.key}-${link.href}`}
+                  href={link.href}
+                  style={{
+                    textDecoration: "none",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.45rem",
+                    padding: "0.18rem 0.5rem",
+                    color: "#1e293b",
+                    background: "#f8fafc",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </section>
+        </aside>
       ) : null}
     </>
   );

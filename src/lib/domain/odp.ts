@@ -2364,6 +2364,12 @@ const safeContains = (value: string, query: string) =>
 const materialIsCritical = (material: OdpMaterialItem) =>
   (material.differenceQty ?? 0) > 0 || material.hasManualChange || material.hasSubstitution;
 
+const normalizeLookupToken = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
 type CockpitNodeInput = Omit<OdpCockpitNode, "sortOrder">;
 
 const buildCockpitNodes = (
@@ -2445,6 +2451,26 @@ const buildCockpitNodes = (
 
   const phaseNodeIdByCode = new Map<string, string>();
   const phaseNodeIdById = new Map<string, string>();
+  const phaseNodeIdsInOrder: string[] = [];
+  const phaseLabelByNodeId = new Map<string, string>();
+  const phaseNodeStatsById = new Map<
+    string,
+    { materials: number; criticalMaterials: number; missionEvents: number }
+  >();
+
+  const getPhaseNodeStats = (phaseNodeId: string) => {
+    const existing = phaseNodeStatsById.get(phaseNodeId);
+    if (existing) {
+      return existing;
+    }
+    const created = {
+      materials: 0,
+      criticalMaterials: 0,
+      missionEvents: 0,
+    };
+    phaseNodeStatsById.set(phaseNodeId, created);
+    return created;
+  };
 
   phases.phases.forEach((phase, index) => {
     const phaseId = `phase:${phase.id}:${index + 1}`;
@@ -2493,36 +2519,79 @@ const buildCockpitNodes = (
     });
 
     phaseNodeIdById.set(phase.id, phaseId);
-    const codeKey = phase.phaseCode.trim().toLowerCase();
-    if (codeKey && !phaseNodeIdByCode.has(codeKey)) {
-      phaseNodeIdByCode.set(codeKey, phaseId);
-    }
+    phaseNodeIdsInOrder.push(phaseId);
+    phaseLabelByNodeId.set(phaseId, `${phase.phaseCode} - ${phase.phaseName}`);
+    getPhaseNodeStats(phaseId);
+
+    const codeTokens = [
+      phase.phaseCode,
+      phase.phaseName,
+      phase.phaseNo !== null ? `${phase.phaseNo}` : "",
+    ]
+      .map(normalizeLookupToken)
+      .filter(Boolean);
+    codeTokens.forEach((token) => {
+      if (!phaseNodeIdByCode.has(token)) {
+        phaseNodeIdByCode.set(token, phaseId);
+      }
+    });
   });
 
   const materialNodeIdByItemId = new Map<string, string>();
+  const materialPhaseNodeIdByItemId = new Map<string, string>();
 
   materials.items.forEach((material, index) => {
     let parentId = rootId;
-    const externalPhaseCode = material.externalPhaseCode?.trim().toLowerCase() ?? "";
-    if (externalPhaseCode) {
-      const matched = phaseNodeIdByCode.get(externalPhaseCode);
-      if (matched) {
-        parentId = matched;
+    let parentPhaseLabel = "ODP";
+    let associationSource = "root";
+
+    const materialToken = normalizeLookupToken(
+      `${material.externalPhaseCode ?? ""} ${material.note ?? ""}`,
+    );
+    if (materialToken) {
+      const direct = phaseNodeIdByCode.get(materialToken);
+      if (direct) {
+        parentId = direct;
+        associationSource = "direct-token";
       } else {
-        for (const [phaseCode, phaseNodeId] of phaseNodeIdByCode.entries()) {
-          if (
-            safeContains(externalPhaseCode, phaseCode) ||
-            safeContains(phaseCode, externalPhaseCode)
-          ) {
+        for (const [phaseToken, phaseNodeId] of phaseNodeIdByCode.entries()) {
+          if (safeContains(materialToken, phaseToken) || safeContains(phaseToken, materialToken)) {
             parentId = phaseNodeId;
+            associationSource = "contains-token";
             break;
           }
         }
       }
     }
 
+    if (parentId === rootId && phaseNodeIdsInOrder.length > 0) {
+      let selectedPhaseNode = phaseNodeIdsInOrder[0];
+      let minCount = getPhaseNodeStats(selectedPhaseNode).materials;
+      phaseNodeIdsInOrder.forEach((phaseNodeId) => {
+        const currentCount = getPhaseNodeStats(phaseNodeId).materials;
+        if (currentCount < minCount) {
+          minCount = currentCount;
+          selectedPhaseNode = phaseNodeId;
+        }
+      });
+      parentId = selectedPhaseNode;
+      associationSource = "balanced-fallback";
+    }
+
+    const isCriticalMaterial = materialIsCritical(material);
+
+    if (parentId !== rootId) {
+      const phaseStats = getPhaseNodeStats(parentId);
+      phaseStats.materials += 1;
+      if (isCriticalMaterial) {
+        phaseStats.criticalMaterials += 1;
+      }
+      materialPhaseNodeIdByItemId.set(material.id, parentId);
+      parentPhaseLabel = phaseLabelByNodeId.get(parentId) ?? parentPhaseLabel;
+    }
+
     const materialSignals: OdpCockpitSignal[] = [];
-    if (materialIsCritical(material)) {
+    if (isCriticalMaterial) {
       materialSignals.push("critical_material");
     }
     if (material.externalPhaseCode || material.subcontractingCode) {
@@ -2549,6 +2618,8 @@ const buildCockpitNodes = (
         `UM: ${material.uom ?? "N/D"}`,
         `Lotto: ${material.lotCode ?? "N/D"}`,
         `Fase esterna: ${material.externalPhaseCode ?? "N/D"}`,
+        `Nodo fase associato: ${parentPhaseLabel}`,
+        `Associazione: ${associationSource}`,
         `Conto lavoro: ${material.subcontractingCode ?? "N/D"}`,
         `Nota: ${material.note ?? "N/D"}`,
         `Sorgente: ${material.sourceTable}`,
@@ -2589,6 +2660,10 @@ const buildCockpitNodes = (
       }
     }
 
+    if (parentId !== rootId) {
+      getPhaseNodeStats(parentId).missionEvents += 1;
+    }
+
     addNode({
       id: `event:phase:${event.id}:${index + 1}`,
       parentId,
@@ -2614,10 +2689,23 @@ const buildCockpitNodes = (
   });
 
   materials.items.forEach((material, index) => {
-    if (!material.hasLots && !material.subcontractingCode && !material.externalPhaseCode) {
+    const hasMovementSignal =
+      material.hasLots ||
+      Boolean(material.subcontractingCode) ||
+      Boolean(material.externalPhaseCode) ||
+      material.hasManualChange ||
+      material.hasSubstitution ||
+      Boolean(material.note) ||
+      ((material.differenceQty ?? 0) !== 0 && material.differenceQty !== null);
+
+    if (!hasMovementSignal) {
       return;
     }
     const parentId = materialNodeIdByItemId.get(material.id) ?? rootId;
+    const parentPhaseNodeId = materialPhaseNodeIdByItemId.get(material.id) ?? null;
+    if (parentPhaseNodeId) {
+      getPhaseNodeStats(parentPhaseNodeId).missionEvents += 1;
+    }
     const movementLabel = material.lotCode
       ? `Movimento lotto ${material.lotCode}`
       : material.subcontractingCode
@@ -2653,6 +2741,35 @@ const buildCockpitNodes = (
       ],
       sourceTable: material.sourceTable,
     });
+  });
+
+  nodes.forEach((node) => {
+    if (node.kind !== "phase") {
+      return;
+    }
+    const stats = phaseNodeStatsById.get(node.id) ?? {
+      materials: 0,
+      criticalMaterials: 0,
+      missionEvents: 0,
+    };
+
+    node.metrics = [
+      ...node.metrics,
+      { label: "Materiali", value: `${stats.materials}` },
+      { label: "Critici", value: `${stats.criticalMaterials}` },
+      { label: "Missioni/eventi", value: `${stats.missionEvents}` },
+    ];
+
+    node.detailLines = [
+      `Materiali collegati: ${stats.materials}`,
+      `Materiali critici: ${stats.criticalMaterials}`,
+      `Missioni/eventi collegati: ${stats.missionEvents}`,
+      ...node.detailLines,
+    ];
+
+    if (stats.criticalMaterials > 0 && !node.signals.includes("critical_material")) {
+      node.signals = normalizeSignalList([...node.signals, "critical_material"]);
+    }
   });
 
   return {
