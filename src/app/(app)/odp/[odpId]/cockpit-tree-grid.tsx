@@ -116,7 +116,7 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
     buildInitialExpandedIds(cockpit, buildChildMap(cockpit.nodes)),
   );
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const childMap = useMemo(() => buildChildMap(cockpit.nodes), [cockpit.nodes]);
 
@@ -169,6 +169,11 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
   };
 
   const onRowSelect = (nodeId: string) => {
+    if (selectedId === nodeId) {
+      setDrawerOpen((previous) => !previous);
+      return;
+    }
+
     setSelectedId(nodeId);
     setDrawerOpen(true);
   };
@@ -215,7 +220,7 @@ export default function OdpCockpitTreeGrid({ cockpit }: OdpCockpitTreeGridProps)
           <strong>Cockpit tree-grid ODP</strong>
           <p style={{ margin: 0, color: "#475569", fontSize: "0.9rem" }}>
             Interazioni: usa l&apos;icona laterale per espandere/collassare il nodo; click sulla
-            riga per aprire il dettaglio nel drawer.
+            riga per aprire il dettaglio nel drawer; riclick sulla stessa riga per chiuderlo.
           </p>
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
             {(Object.keys(signalMeta) as OdpCockpitSignal[]).map((signal) => (
