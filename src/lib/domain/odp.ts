@@ -1688,6 +1688,7 @@ export type OdpMaterialItem = {
   tenantId: string;
   odpId: string;
   odpCode: string | null;
+  phaseId: string | null;
   materialCode: string;
   materialName: string;
   uom: string | null;
@@ -1698,6 +1699,7 @@ export type OdpMaterialItem = {
   differenceQty: number | null;
   hasManualChange: boolean;
   hasSubstitution: boolean;
+  isCritical: boolean;
   lotCode: string | null;
   hasLots: boolean;
   externalPhaseCode: string | null;
@@ -1739,6 +1741,7 @@ type OdpMaterialTableCandidate = {
   tenantColumns: string[];
   orderColumns: string[];
   orderCodeColumns: string[];
+  phaseIdColumns: string[];
   materialCodeColumns: string[];
   materialNameColumns: string[];
   uomColumns: string[];
@@ -1749,6 +1752,7 @@ type OdpMaterialTableCandidate = {
   differenceQtyColumns: string[];
   manualColumns: string[];
   substitutionColumns: string[];
+  criticalColumns: string[];
   lotColumns: string[];
   lotsFlagColumns: string[];
   externalPhaseColumns: string[];
@@ -1763,6 +1767,7 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     tenantColumns: ["tenant_id", "tenant_uuid"],
     orderColumns: ["production_order_id", "order_id", "odp_id"],
     orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    phaseIdColumns: ["production_order_phase_id", "phase_id", "step_id"],
     materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
     materialNameColumns: ["material_name", "item_name", "description", "name"],
     uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
@@ -1773,6 +1778,7 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
     manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
     substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    criticalColumns: ["is_critical", "has_critical_issue", "criticality_flag", "is_anomaly"],
     lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
     lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
     externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
@@ -1790,6 +1796,7 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     tenantColumns: ["tenant_id", "tenant_uuid"],
     orderColumns: ["production_order_id", "order_id", "odp_id"],
     orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    phaseIdColumns: ["production_order_phase_id", "phase_id", "step_id"],
     materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
     materialNameColumns: ["material_name", "item_name", "description", "name"],
     uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
@@ -1800,6 +1807,7 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
     manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
     substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    criticalColumns: ["is_critical", "has_critical_issue", "criticality_flag", "is_anomaly"],
     lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
     lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
     externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
@@ -1817,6 +1825,7 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     tenantColumns: ["tenant_id", "tenant_uuid"],
     orderColumns: ["production_order_id", "order_id", "odp_id"],
     orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    phaseIdColumns: ["production_order_phase_id", "phase_id", "step_id"],
     materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
     materialNameColumns: ["material_name", "item_name", "description", "name"],
     uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
@@ -1827,6 +1836,7 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
     manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
     substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    criticalColumns: ["is_critical", "has_critical_issue", "criticality_flag", "is_anomaly"],
     lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
     lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
     externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
@@ -1844,6 +1854,7 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     tenantColumns: ["tenant_id", "tenant_uuid"],
     orderColumns: ["production_order_id", "order_id", "odp_id"],
     orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    phaseIdColumns: ["production_order_phase_id", "phase_id", "step_id"],
     materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
     materialNameColumns: ["material_name", "item_name", "description", "name"],
     uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
@@ -1854,6 +1865,39 @@ const ODP_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
     differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
     manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
     substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    criticalColumns: ["is_critical", "has_critical_issue", "criticality_flag", "is_anomaly"],
+    lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
+    lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
+    externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
+    subcontractColumns: [
+      "subcontracting_code",
+      "subcontract_code",
+      "terzista_document_no",
+      "supplier_document_no",
+    ],
+    noteColumns: ["note", "notes", "description", "remark"],
+  },
+];
+
+const ODP_PHASE_MATERIAL_TABLE_CANDIDATES: OdpMaterialTableCandidate[] = [
+  {
+    table: "production_order_phase_materials",
+    idColumns: ["id", "production_order_phase_material_id", "line_id"],
+    tenantColumns: ["tenant_id", "tenant_uuid"],
+    orderColumns: ["production_order_id", "order_id", "odp_id"],
+    orderCodeColumns: ["production_order_no", "order_no", "odp_no", "document_no", "order_code"],
+    phaseIdColumns: ["production_order_phase_id", "phase_id", "step_id"],
+    materialCodeColumns: ["material_code", "item_code", "product_code", "code", "sku"],
+    materialNameColumns: ["material_name", "item_name", "description", "name"],
+    uomColumns: ["uom", "unit_of_measure", "base_uom", "um"],
+    statusColumns: ["status", "state", "workflow_status", "lifecycle_status", "material_status"],
+    theoreticalQtyColumns: ["theoretical_qty", "planned_qty", "required_qty", "qty_required", "bom_qty"],
+    pickedQtyColumns: ["picked_qty", "issued_qty", "withdrawn_qty", "qty_picked", "prelevato_qty"],
+    consumedQtyColumns: ["consumed_qty", "actual_consumed_qty", "used_qty", "qty_consumed"],
+    differenceQtyColumns: ["difference_qty", "variance_qty", "delta_qty", "qty_difference", "scostamento_qty"],
+    manualColumns: ["is_manual", "manual_override", "manual_change", "changed_manually"],
+    substitutionColumns: ["is_substitute", "is_substitution", "allow_substitute", "substitute_flag"],
+    criticalColumns: ["is_critical", "has_critical_issue", "criticality_flag", "is_anomaly"],
     lotColumns: ["lot_code", "lot_no", "batch_code", "batch_no"],
     lotsFlagColumns: ["has_lot", "has_lots", "lot_required"],
     externalPhaseColumns: ["external_phase_code", "phase_code", "operation_code", "step_code"],
@@ -1887,6 +1931,94 @@ const sumQtyOrNull = (values: Array<number | null>) => {
     return null;
   }
   return roundQty(normalized.reduce((sum, value) => sum + value, 0));
+};
+
+const queryMaterialRowsByPhaseIds = async (
+  candidate: OdpMaterialTableCandidate,
+  tenantId: string,
+  phaseIds: string[],
+): Promise<QueryRowsResult> => {
+  if (phaseIds.length === 0) {
+    return {
+      exists: false,
+      rows: [],
+      warning: null,
+    };
+  }
+
+  const admin = getSupabaseAdminClient();
+
+  for (const phaseIdColumn of candidate.phaseIdColumns) {
+    for (const tenantColumn of candidate.tenantColumns) {
+      const { data, error } = await admin
+        .from(candidate.table)
+        .select("*")
+        .in(phaseIdColumn, phaseIds)
+        .eq(tenantColumn, tenantId)
+        .limit(SAFE_LIST_LIMIT);
+
+      if (!error) {
+        return {
+          exists: true,
+          rows: (data ?? []) as RawRow[],
+          warning: null,
+        };
+      }
+
+      const message = error.message ?? "Unknown query error";
+      if (
+        looksLikeMissingTable(message) ||
+        looksLikeMissingColumn(message, phaseIdColumn) ||
+        looksLikeMissingColumn(message, tenantColumn)
+      ) {
+        continue;
+      }
+
+      return {
+        exists: true,
+        rows: [],
+        warning: `Errore su ${candidate.table}: ${message}`,
+      };
+    }
+  }
+
+  for (const phaseIdColumn of candidate.phaseIdColumns) {
+    const fallback = await admin
+      .from(candidate.table)
+      .select("*")
+      .in(phaseIdColumn, phaseIds)
+      .limit(SAFE_LIST_LIMIT);
+
+    if (!fallback.error) {
+      const rows = ((fallback.data ?? []) as RawRow[]).filter((row) => {
+        const rowTenant = readStringFromKeys(row, candidate.tenantColumns);
+        return rowTenant === tenantId;
+      });
+
+      return {
+        exists: true,
+        rows,
+        warning: null,
+      };
+    }
+
+    const message = fallback.error.message ?? "Unknown query error";
+    if (looksLikeMissingTable(message) || looksLikeMissingColumn(message, phaseIdColumn)) {
+      continue;
+    }
+
+    return {
+      exists: true,
+      rows: [],
+      warning: `Errore su ${candidate.table}: ${message}`,
+    };
+  }
+
+  return {
+    exists: false,
+    rows: [],
+    warning: null,
+  };
 };
 
 const queryMaterialRowsByOrder = async (
@@ -1985,6 +2117,7 @@ const normalizeMaterialRow = (
   const materialCode =
     readStringFromKeys(row, candidate.materialCodeColumns) || `MAT-${rowIndex + 1}`;
   const materialName = readStringFromKeys(row, candidate.materialNameColumns) || materialCode;
+  const phaseId = readStringFromKeys(row, candidate.phaseIdColumns) || null;
   const status = readStringFromKeys(row, candidate.statusColumns) || "unknown";
   const theoreticalQty = roundQty(readNumberFromKeys(row, candidate.theoreticalQtyColumns));
   const pickedQty = roundQty(readNumberFromKeys(row, candidate.pickedQtyColumns));
@@ -1998,6 +2131,10 @@ const normalizeMaterialRow = (
   const hasLots = (readBooleanFromKeys(row, candidate.lotsFlagColumns) ?? false) || lotCode !== null;
   const externalPhaseCode = readStringFromKeys(row, candidate.externalPhaseColumns) || null;
   const subcontractingCode = readStringFromKeys(row, candidate.subcontractColumns) || null;
+  const isCritical =
+    (readBooleanFromKeys(row, candidate.criticalColumns) ??
+      ((readNumberFromKeys(row, candidate.criticalColumns) ?? 0) > 0)) ||
+    false;
 
   const hasRelevantData =
     Boolean(materialCode) ||
@@ -2017,6 +2154,7 @@ const normalizeMaterialRow = (
     tenantId: readStringFromKeys(row, candidate.tenantColumns) || tenantId,
     odpId,
     odpCode: readStringFromKeys(row, candidate.orderCodeColumns) || fallbackOrderCode,
+    phaseId,
     materialCode,
     materialName,
     uom: readStringFromKeys(row, candidate.uomColumns) || null,
@@ -2027,6 +2165,7 @@ const normalizeMaterialRow = (
     differenceQty,
     hasManualChange: readBooleanFromKeys(row, candidate.manualColumns) ?? false,
     hasSubstitution: readBooleanFromKeys(row, candidate.substitutionColumns) ?? false,
+    isCritical,
     lotCode,
     hasLots,
     externalPhaseCode,
@@ -2178,22 +2317,77 @@ const buildMaterials = async (
   const normalized: OdpMaterialItem[] = [];
   const fallbackOrderCode = detail.order?.code ?? null;
 
-  for (const candidate of ODP_MATERIAL_TABLE_CANDIDATES) {
-    const result = await queryMaterialRowsByOrder(candidate, tenantId, odpId);
-    if (result.warning) {
-      warnings.push(result.warning);
+  const phaseSnapshot = await getTenantOdpPhases(tenantId, odpId, {
+    q: "",
+    status: "all",
+    delay: "all",
+    blocked: "all",
+    external: "all",
+    quality: "all",
+  });
+
+  warnings.push(...phaseSnapshot.warnings);
+  const phaseById = new Map(phaseSnapshot.phases.map((phase) => [phase.id, phase]));
+  const phaseIds = [...phaseById.keys()];
+  let canonicalSourceResolved = false;
+
+  for (const candidate of ODP_PHASE_MATERIAL_TABLE_CANDIDATES) {
+    const byPhaseResult = phaseIds.length > 0 ? await queryMaterialRowsByPhaseIds(candidate, tenantId, phaseIds) : null;
+    if (byPhaseResult?.warning) {
+      warnings.push(byPhaseResult.warning);
     }
-    if (!result.exists) {
+
+    let resolvedResult = byPhaseResult;
+    if (!resolvedResult?.exists || resolvedResult.rows.length === 0) {
+      const byOrderResult = await queryMaterialRowsByOrder(candidate, tenantId, odpId);
+      if (byOrderResult.warning) {
+        warnings.push(byOrderResult.warning);
+      }
+      if (byOrderResult.exists) {
+        resolvedResult = byOrderResult;
+      }
+    }
+
+    if (!resolvedResult?.exists) {
       continue;
     }
 
+    canonicalSourceResolved = true;
     sourceTables.add(candidate.table);
-    result.rows.forEach((row, index) => {
+
+    resolvedResult.rows.forEach((row, index) => {
       const item = normalizeMaterialRow(row, candidate, tenantId, odpId, fallbackOrderCode, index);
-      if (item) {
-        normalized.push(item);
+      if (!item) {
+        return;
       }
+
+      const phase = item.phaseId ? phaseById.get(item.phaseId) : undefined;
+      if (phase) {
+        item.externalPhaseCode = item.externalPhaseCode ?? phase.phaseCode;
+        item.odpCode = item.odpCode ?? phase.odpCode ?? fallbackOrderCode;
+      }
+      normalized.push(item);
     });
+  }
+
+  if (!canonicalSourceResolved) {
+    for (const candidate of ODP_MATERIAL_TABLE_CANDIDATES) {
+      const result = await queryMaterialRowsByOrder(candidate, tenantId, odpId);
+      if (result.warning) {
+        warnings.push(result.warning);
+      }
+      if (!result.exists) {
+        continue;
+      }
+
+      sourceTables.add(candidate.table);
+      result.rows.forEach((row, index) => {
+        const item = normalizeMaterialRow(row, candidate, tenantId, odpId, fallbackOrderCode, index);
+        if (item) {
+          normalized.push(item);
+        }
+      });
+    }
   }
 
   const sorted = sortMaterials(dedupeMaterials(normalized));
@@ -2362,7 +2556,10 @@ const safeContains = (value: string, query: string) =>
   value.toLowerCase().includes(query.toLowerCase());
 
 const materialIsCritical = (material: OdpMaterialItem) =>
-  (material.differenceQty ?? 0) > 0 || material.hasManualChange || material.hasSubstitution;
+  material.isCritical ||
+  (material.differenceQty ?? 0) > 0 ||
+  material.hasManualChange ||
+  material.hasSubstitution;
 
 const normalizeLookupToken = (value: string) =>
   value
@@ -2545,20 +2742,26 @@ const buildCockpitNodes = (
     let parentPhaseLabel = "ODP";
     let associationSource = "root";
 
-    const materialToken = normalizeLookupToken(
-      `${material.externalPhaseCode ?? ""} ${material.note ?? ""}`,
-    );
-    if (materialToken) {
-      const direct = phaseNodeIdByCode.get(materialToken);
-      if (direct) {
-        parentId = direct;
-        associationSource = "direct-token";
-      } else {
-        for (const [phaseToken, phaseNodeId] of phaseNodeIdByCode.entries()) {
-          if (safeContains(materialToken, phaseToken) || safeContains(phaseToken, materialToken)) {
-            parentId = phaseNodeId;
-            associationSource = "contains-token";
-            break;
+    const directPhaseNodeId = material.phaseId ? phaseNodeIdById.get(material.phaseId) : undefined;
+    if (directPhaseNodeId) {
+      parentId = directPhaseNodeId;
+      associationSource = "phase-id";
+    } else {
+      const materialToken = normalizeLookupToken(
+        `${material.externalPhaseCode ?? ""} ${material.note ?? ""}`,
+      );
+      if (materialToken) {
+        const direct = phaseNodeIdByCode.get(materialToken);
+        if (direct) {
+          parentId = direct;
+          associationSource = "direct-token";
+        } else {
+          for (const [phaseToken, phaseNodeId] of phaseNodeIdByCode.entries()) {
+            if (safeContains(materialToken, phaseToken) || safeContains(phaseToken, materialToken)) {
+              parentId = phaseNodeId;
+              associationSource = "contains-token";
+              break;
+            }
           }
         }
       }
@@ -2618,6 +2821,7 @@ const buildCockpitNodes = (
         `UM: ${material.uom ?? "N/D"}`,
         `Lotto: ${material.lotCode ?? "N/D"}`,
         `Fase esterna: ${material.externalPhaseCode ?? "N/D"}`,
+        `Phase ID: ${material.phaseId ?? "N/D"}`,
         `Nodo fase associato: ${parentPhaseLabel}`,
         `Associazione: ${associationSource}`,
         `Conto lavoro: ${material.subcontractingCode ?? "N/D"}`,
