@@ -401,3 +401,26 @@ cd esyy-flow-app
 - interazione aggiornata:
   - icona dedicata per espandi/collassa
   - click riga per selezione + apertura drawer
+
+## Scope CF-01
+
+- fondazione metadata-driven tenant-scoped per campi personalizzati app-native
+- definizioni custom field + versione corrente + binding contesto base
+- valori custom field su target `header` e `line`
+- audit minimo su create/update valori in `custom_field_value_events`
+- endpoint:
+  - `GET/POST /api/custom-fields/definitions`
+  - `GET/POST /api/custom-fields/values`
+- pagina protetta V1:
+  - `/configurazione/campi-personalizzati`
+
+## Scope CF-02
+
+- fondazione integrazione tecnica tenant-scoped per custom fields nel layer `int_*`
+- gestione binding tecnico (`int_field_bindings`) tra definizione campo app e target esterno
+- metadati binding coperti: contesto oggetto/target, sistema esterno, target campo esterno, direzione prevista, stato binding
+- nessuna sincronizzazione ERP reale in questo slice
+- endpoint:
+  - `GET/POST /api/custom-fields/int-bindings`
+- pagina protetta V1:
+  - `/configurazione/campi-personalizzati/binding-tecnici`
