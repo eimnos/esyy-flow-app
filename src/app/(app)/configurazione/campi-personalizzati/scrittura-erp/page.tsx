@@ -7,7 +7,7 @@ import {
   CUSTOM_FIELD_TARGET_LEVELS,
   getTenantCustomFieldCatalog,
 } from "@/lib/domain/custom-fields";
-import { getTenantCustomFieldErpReadPreview } from "@/lib/domain/custom-field-erp-read";
+import { executeTenantCustomFieldErpWrite } from "@/lib/domain/custom-field-erp-write";
 import { getTenantIntFieldBindingsCatalog } from "@/lib/domain/custom-field-int-bindings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
@@ -15,21 +15,30 @@ import { findTenantMembership, getUserTenantMemberships } from "@/lib/tenant/mem
 
 export const dynamic = "force-dynamic";
 
-type ErpReadPageProps = {
+type ErpWritePageProps = {
   searchParams: Promise<{
+    op?: string | string[];
+    ok?: string | string[];
+    message?: string | string[];
     object_type_code?: string | string[];
     target_level?: string | string[];
     target_record_id?: string | string[];
     target_line_record_id?: string | string[];
     custom_field_definition_id?: string | string[];
     source_system_code?: string | string[];
+    dry_run?: string | string[];
   }>;
 };
 
 const normalizeParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 
-export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadPageProps) {
+const parseBool = (value: string | string[] | undefined) => {
+  const normalized = normalizeParam(value).toLowerCase();
+  return ["1", "true", "yes", "on", "y"].includes(normalized);
+};
+
+export default async function CustomFieldsErpWritePage({ searchParams }: ErpWritePageProps) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -55,23 +64,28 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
   }
 
   const params = await searchParams;
+
+  const op = normalizeParam(params.op);
+  const ok = normalizeParam(params.ok) === "1";
+  const message = normalizeParam(params.message);
+
   const definitionsCatalog = await getTenantCustomFieldCatalog(selectedTenantId);
   const bindingsCatalog = await getTenantIntFieldBindingsCatalog(selectedTenantId);
 
-  const readableBindings = bindingsCatalog.bindings.filter(
+  const writeBindings = bindingsCatalog.bindings.filter(
     (binding) =>
       binding.status === "active" &&
       binding.isEnabled &&
-      (binding.directionMode === "read" ||
+      (binding.directionMode === "write" ||
         binding.directionMode === "bidirectional_candidate"),
   );
 
-  const sourceSystemOptions = [...new Set(readableBindings.map((binding) => binding.sourceSystemCode))]
+  const sourceSystemOptions = [...new Set(writeBindings.map((binding) => binding.sourceSystemCode))]
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b, "it"));
 
-  const defaultObjectType = readableBindings[0]?.objectTypeCode ?? CUSTOM_FIELD_OBJECT_TYPES[0];
-  const defaultTargetLevel = readableBindings[0]?.targetLevel ?? CUSTOM_FIELD_TARGET_LEVELS[0];
+  const defaultObjectType = writeBindings[0]?.objectTypeCode ?? CUSTOM_FIELD_OBJECT_TYPES[0];
+  const defaultTargetLevel = writeBindings[0]?.targetLevel ?? CUSTOM_FIELD_TARGET_LEVELS[0];
 
   const objectTypeCode = normalizeParam(params.object_type_code) || defaultObjectType;
   const targetLevel = normalizeParam(params.target_level) || defaultTargetLevel;
@@ -79,6 +93,7 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
   const targetLineRecordId = normalizeParam(params.target_line_record_id);
   const customFieldDefinitionId = normalizeParam(params.custom_field_definition_id);
   const sourceSystemCode = normalizeParam(params.source_system_code);
+  const dryRun = parseBool(params.dry_run) || targetRecordId.length === 0;
 
   const hasValidObjectType = CUSTOM_FIELD_OBJECT_TYPES.includes(
     objectTypeCode as (typeof CUSTOM_FIELD_OBJECT_TYPES)[number],
@@ -87,16 +102,17 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
     targetLevel as (typeof CUSTOM_FIELD_TARGET_LEVELS)[number],
   );
 
-  const canRunPreview = hasValidObjectType && hasValidTargetLevel && targetRecordId.length > 0;
+  const canRun = hasValidObjectType && hasValidTargetLevel && targetRecordId.length > 0;
 
-  const preview = canRunPreview
-    ? await getTenantCustomFieldErpReadPreview(selectedTenantId, {
+  const execution = canRun
+    ? await executeTenantCustomFieldErpWrite(selectedTenantId, {
         objectTypeCode: objectTypeCode as (typeof CUSTOM_FIELD_OBJECT_TYPES)[number],
         targetLevel: targetLevel as (typeof CUSTOM_FIELD_TARGET_LEVELS)[number],
         targetRecordId,
         targetLineRecordId,
         customFieldDefinitionId,
         sourceSystemCode,
+        dryRun,
       })
     : null;
 
@@ -105,12 +121,12 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
     .sort((left, right) => left.code.localeCompare(right.code, "it"));
 
   return (
-    <section style={{ display: "grid", gap: "1rem", maxWidth: "1400px" }}>
+    <section style={{ display: "grid", gap: "1rem", maxWidth: "1480px" }}>
       <header style={{ display: "grid", gap: "0.35rem" }}>
-        <h1 style={{ margin: 0 }}>Configurazione / Campi personalizzati / Read ERP selettivo (CF-03)</h1>
+        <h1 style={{ margin: 0 }}>Configurazione / Campi personalizzati / Write ERP one-way (CF-04)</h1>
         <p style={{ margin: 0, color: "#475569" }}>
-          Slice di sola lettura ERP tramite binding tecnici attivi. Nessuna scrittura ERP, nessuna
-          bidirezionalita runtime e nessuna sincronizzazione estesa.
+          Slice di scrittura one-way governata: target ERP gia esistenti, binding tecnici attivi e
+          compatibili, nessuna bidirezionalita runtime e nessuna sync estesa.
         </p>
       </header>
 
@@ -131,9 +147,26 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
           Utente: <strong>{user.email ?? user.id}</strong>
         </span>
         <span>
-          Binding read attivi: <strong>{readableBindings.length}</strong>
+          Binding write attivi: <strong>{writeBindings.length}</strong>
         </span>
       </section>
+
+      {op ? (
+        <p
+          role="status"
+          style={{
+            margin: 0,
+            border: "1px solid",
+            borderColor: ok ? "#86efac" : "#fecaca",
+            borderRadius: "0.65rem",
+            background: ok ? "#f0fdf4" : "#fef2f2",
+            color: ok ? "#166534" : "#991b1b",
+            padding: "0.75rem",
+          }}
+        >
+          <strong>{op}</strong>: {message || (ok ? "Operazione completata." : "Operazione fallita.")}
+        </p>
+      ) : null}
 
       {bindingsCatalog.error ? (
         <p
@@ -177,10 +210,10 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
           gap: "0.7rem",
         }}
       >
-        <strong>Filtro lettura ERP (solo binding tecnici attivi/read)</strong>
+        <strong>Input scrittura one-way</strong>
         <form
-          method="get"
-          action="/configurazione/campi-personalizzati/lettura-erp"
+          method="post"
+          action="/api/custom-fields/erp-write"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, minmax(220px, 1fr))",
@@ -258,13 +291,19 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
             </select>
           </label>
 
+          <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", gridColumn: "1 / span 2" }}>
+            <input type="hidden" name="dry_run" value="0" />
+            <input type="checkbox" name="dry_run" value="1" defaultChecked={dryRun} />
+            <span>Dry run (nessuna persistenza)</span>
+          </label>
+
           <button type="submit" style={{ padding: "0.6rem 0.8rem", cursor: "pointer" }}>
-            Esegui read ERP
+            Esegui write ERP one-way
           </button>
         </form>
       </section>
 
-      {preview?.error ? (
+      {execution?.error ? (
         <p
           role="alert"
           style={{
@@ -276,11 +315,34 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
             padding: "0.8rem",
           }}
         >
-          {preview.error}
+          {execution.error}
         </p>
       ) : null}
 
-      {preview && (preview.warnings.length > 0 || bindingsCatalog.warnings.length > 0) ? (
+      {execution ? (
+        <section
+          style={{
+            border: "1px solid #d1d5db",
+            borderRadius: "0.75rem",
+            background: "#fff",
+            padding: "0.9rem",
+            display: "grid",
+            gap: "0.45rem",
+          }}
+        >
+          <strong>Esito {execution.dryRun ? "dry run" : "write"}</strong>
+          <span>
+            Totali: processed={execution.totals.processed} / written={execution.totals.written} /
+            planned={execution.totals.planned} / skipped={execution.totals.skipped} /
+            failed={execution.totals.failed}
+          </span>
+          <span>
+            Sorgenti usate: {execution.sourceTables.length > 0 ? execution.sourceTables.join(", ") : "N/D"}
+          </span>
+        </section>
+      ) : null}
+
+      {execution && execution.warnings.length > 0 ? (
         <section
           style={{
             border: "1px solid #fde68a",
@@ -292,7 +354,7 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
           }}
         >
           <strong style={{ fontSize: "0.9rem" }}>Warning runtime</strong>
-          {[...bindingsCatalog.warnings, ...preview.warnings].map((warning) => (
+          {execution.warnings.map((warning) => (
             <span key={warning} style={{ fontSize: "0.85rem", color: "#78350f" }}>
               {warning}
             </span>
@@ -300,7 +362,7 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
         </section>
       ) : null}
 
-      {preview ? (
+      {execution ? (
         <section
           style={{
             border: "1px solid #d1d5db",
@@ -317,16 +379,17 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
               gap: "0.2rem",
             }}
           >
-            <strong>Read ERP selettivo</strong>
+            <strong>Dettaglio binding write</strong>
             <p style={{ margin: 0, color: "#475569", fontSize: "0.9rem" }}>
-              Sorgenti usate: {preview.sourceTables.length > 0 ? preview.sourceTables.join(", ") : "N/D"}
+              Scrittura one-way governata da binding tecnici. Nessuna sync estesa e nessuna
+              bidirezionalita runtime.
             </p>
           </header>
 
-          <table style={{ width: "100%", minWidth: "1200px", borderCollapse: "collapse" }}>
+          <table style={{ width: "100%", minWidth: "1300px", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8fafc" }}>
-                {["Campo app", "Binding", "Target", "Sorgente", "Valore letto"].map((header) => (
+                {["Campo app", "Binding", "Target", "Valore app", "Esito"].map((header) => (
                   <th
                     key={header}
                     style={{
@@ -344,8 +407,8 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
               </tr>
             </thead>
             <tbody>
-              {preview.values.map((item) => (
-                <tr key={item.bindingId}>
+              {execution.values.map((item) => (
+                <tr key={`${item.bindingId}-${item.sourceRecordId}`}>
                   <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                     <span style={{ display: "grid", gap: "0.2rem" }}>
                       <strong>{item.customFieldCode ?? "N/D"}</strong>
@@ -370,35 +433,28 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
                   </td>
                   <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                     <span style={{ display: "grid", gap: "0.2rem" }}>
-                      <span>{item.objectTypeCode}</span>
-                      <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
-                        {item.targetLevel}
-                        {item.lineContextType ? `:${item.lineContextType}` : ""}
-                      </span>
-                      <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
-                        target: {item.sourceRecordId}
-                      </span>
-                    </span>
-                  </td>
-                  <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
-                    <span style={{ display: "grid", gap: "0.2rem" }}>
                       <span>{item.sourceTable}</span>
                       <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
-                        external: {item.externalFieldIdentifier}
+                        column: {item.sourceColumn ?? item.externalFieldIdentifier}
                       </span>
                       <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
-                        column: {item.sourceColumn ?? "N/D"}
+                        record: {item.sourceRecordId}
+                        {item.updatedRowId ? ` (updated id: ${item.updatedRowId})` : ""}
                       </span>
                     </span>
                   </td>
                   <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                     <span style={{ display: "grid", gap: "0.2rem" }}>
-                      <strong>{item.sourceValueFound ? item.sourceValue ?? "(vuoto)" : "Non trovato"}</strong>
+                      <strong>{item.appValue === null ? "(null)" : `${item.appValue}`}</strong>
                       <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
-                        {item.sourceValueFound
-                          ? "Valore letto dalla sorgente esterna"
-                          : "Campo esterno non disponibile sul record sorgente"}
+                        type: {item.appValueType}
                       </span>
+                    </span>
+                  </td>
+                  <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
+                    <span style={{ display: "grid", gap: "0.2rem" }}>
+                      <strong>{item.writeStatus}</strong>
+                      <span style={{ color: "#64748b", fontSize: "0.8rem" }}>{item.message}</span>
                     </span>
                   </td>
                 </tr>
@@ -406,12 +462,12 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
             </tbody>
           </table>
 
-          {preview.values.length === 0 ? (
+          {execution.values.length === 0 ? (
             <section style={{ margin: 0, padding: "1rem", display: "grid", gap: "0.4rem" }}>
-              <strong>Nessun dato ERP letto</strong>
+              <strong>Nessun binding elaborato</strong>
               <p style={{ margin: 0, color: "#475569" }}>
-                {preview.emptyStateHint ??
-                  "Definisci almeno un binding tecnico attivo/read con target coerente, poi ripeti la lettura."}
+                {execution.emptyStateHint ??
+                  "Definisci binding write attivi e valori app-native coerenti, poi riesegui il test."}
               </p>
             </section>
           ) : null}
@@ -431,9 +487,7 @@ export default async function CustomFieldsErpReadPage({ searchParams }: ErpReadP
         <Link href="/configurazione/campi-personalizzati/binding-tecnici">
           Apri binding tecnici CF-02
         </Link>
-        <Link href="/configurazione/campi-personalizzati/scrittura-erp">
-          Apri write ERP CF-04
-        </Link>
+        <Link href="/configurazione/campi-personalizzati/lettura-erp">Apri read ERP CF-03</Link>
         <Link href="/dashboard">Torna a dashboard</Link>
       </section>
     </section>

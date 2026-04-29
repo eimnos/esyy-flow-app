@@ -438,3 +438,18 @@ cd esyy-flow-app
   - `GET /api/custom-fields/erp-read`
 - pagina protetta V1:
   - `/configurazione/campi-personalizzati/lettura-erp`
+
+## Scope CF-04
+
+- primo slice reale di write ERP one-way per custom fields
+- scrittura consentita solo su binding tecnici attivi, enabled e compatibili (`write` / `bidirectional_candidate`)
+- perimetro governato:
+  - source system in allowlist (`sap_b1`)
+  - target object/level validati
+  - target field esterno risolto da `external_field_identifier`
+- nessuna bidirezionalita runtime, nessuna sync estesa, nessun mapping libero
+- endpoint:
+  - `GET /api/custom-fields/erp-write` (dry-run preview)
+  - `POST /api/custom-fields/erp-write` (write one-way / dry-run)
+- pagina protetta V1:
+  - `/configurazione/campi-personalizzati/scrittura-erp`

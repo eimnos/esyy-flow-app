@@ -35,6 +35,11 @@ const navItems = [
     label: "Read ERP CF",
     enabled: true,
   },
+  {
+    href: "/configurazione/campi-personalizzati/scrittura-erp",
+    label: "Write ERP CF",
+    enabled: true,
+  },
   { href: "/pre-industrializzazione", label: "Pre-industrializzazione", enabled: true },
   { href: "/commesse", label: "Commesse", enabled: true },
   { href: "/anagrafiche/articoli-prodotto", label: "Articoli prodotto", enabled: true },

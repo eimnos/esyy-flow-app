@@ -717,6 +717,9 @@ export default async function CustomFieldsPage({ searchParams }: CustomFieldsPag
         <Link href="/configurazione/campi-personalizzati/lettura-erp">
           Apri read ERP CF-03
         </Link>
+        <Link href="/configurazione/campi-personalizzati/scrittura-erp">
+          Apri write ERP CF-04
+        </Link>
         <Link href="/dashboard">Torna a dashboard</Link>
         <Link href="/anagrafiche">Torna ad anagrafiche</Link>
       </section>
