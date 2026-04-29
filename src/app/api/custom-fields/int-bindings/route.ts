@@ -5,7 +5,6 @@ import {
   createTenantIntFieldBinding,
   INT_FIELD_BINDING_DIRECTION_MODES,
   INT_FIELD_BINDING_STATUSES,
-  INT_FIELD_BINDING_SYNC_MODES,
   getTenantIntFieldBindingsCatalog,
 } from "@/lib/domain/custom-field-int-bindings";
 import { buildAppRedirect } from "@/lib/http/redirect";
@@ -15,11 +14,6 @@ import { findTenantMembership, getUserTenantMemberships } from "@/lib/tenant/mem
 
 const isJsonRequest = (request: Request) =>
   request.headers.get("content-type")?.toLowerCase().includes("application/json") ?? false;
-
-const parseBool = (value: unknown) => {
-  const normalized = `${value ?? ""}`.trim().toLowerCase();
-  return ["1", "true", "yes", "on"].includes(normalized);
-};
 
 const parseText = (value: unknown) => `${value ?? ""}`.trim();
 
@@ -89,7 +83,6 @@ export async function POST(request: Request) {
 
   const status = parseText(payload.status || "draft");
   const directionMode = parseText(payload.direction_mode || "read");
-  const syncMode = parseText(payload.sync_mode || "manual");
 
   if (!INT_FIELD_BINDING_STATUSES.includes(status as (typeof INT_FIELD_BINDING_STATUSES)[number])) {
     const message = `status non supportato: ${status}`;
@@ -119,35 +112,18 @@ export async function POST(request: Request) {
     });
   }
 
-  if (!INT_FIELD_BINDING_SYNC_MODES.includes(syncMode as (typeof INT_FIELD_BINDING_SYNC_MODES)[number])) {
-    const message = `sync_mode non supportato: ${syncMode}`;
-    if (wantsJson) {
-      return NextResponse.json({ error: message }, { status: 400 });
-    }
-    return buildAppRedirect(request, redirectBasePath, {
-      op: "int-binding-create",
-      ok: "0",
-      message,
-    });
-  }
-
   const result = await createTenantIntFieldBinding(selectedTenantId, user.id, {
-    code: parseText(payload.code),
     status: status as (typeof INT_FIELD_BINDING_STATUSES)[number],
     customFieldDefinitionId: parseText(
       payload.custom_field_definition_id ?? payload.app_field_definition_id,
     ),
     objectTypeCode: parseText(payload.object_type_code),
     targetLevel: parseText(payload.target_level),
-    lineContextType: parseText(payload.line_context_type),
     sourceSystemCode: parseText(payload.source_system_code),
-    erpEntitySet: parseText(payload.erp_entity_set),
-    erpObjectType: parseText(payload.erp_object_type),
-    erpFieldName: parseText(payload.erp_field_name),
-    erpIsUdf: parseBool(payload.erp_is_udf),
+    externalFieldIdentifier: parseText(
+      payload.external_field_identifier ?? payload.erp_field_name,
+    ),
     directionMode: directionMode as (typeof INT_FIELD_BINDING_DIRECTION_MODES)[number],
-    syncMode: syncMode as (typeof INT_FIELD_BINDING_SYNC_MODES)[number],
-    isEnabled: parseBool(payload.is_enabled || "1"),
   });
 
   if (wantsJson) {
