@@ -20,6 +20,11 @@ type AppLayoutProps = Readonly<{
 const navItems = [
   { href: "/dashboard", label: "Dashboard", enabled: true },
   { href: "/anagrafiche", label: "Anagrafiche", enabled: true },
+  {
+    href: "/configurazione/campi-personalizzati",
+    label: "Campi personalizzati",
+    enabled: true,
+  },
   { href: "/pre-industrializzazione", label: "Pre-industrializzazione", enabled: true },
   { href: "/commesse", label: "Commesse", enabled: true },
   { href: "/anagrafiche/articoli-prodotto", label: "Articoli prodotto", enabled: true },
