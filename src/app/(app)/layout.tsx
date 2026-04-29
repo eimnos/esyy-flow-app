@@ -30,6 +30,11 @@ const navItems = [
     label: "Binding tecnici CF",
     enabled: true,
   },
+  {
+    href: "/configurazione/campi-personalizzati/lettura-erp",
+    label: "Read ERP CF",
+    enabled: true,
+  },
   { href: "/pre-industrializzazione", label: "Pre-industrializzazione", enabled: true },
   { href: "/commesse", label: "Commesse", enabled: true },
   { href: "/anagrafiche/articoli-prodotto", label: "Articoli prodotto", enabled: true },

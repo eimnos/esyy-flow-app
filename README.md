@@ -424,3 +424,17 @@ cd esyy-flow-app
   - `GET/POST /api/custom-fields/int-bindings`
 - pagina protetta V1:
   - `/configurazione/campi-personalizzati/binding-tecnici`
+
+## Scope CF-03
+
+- primo slice reale di read ERP selettivo per custom fields
+- lettura consentita solo su binding tecnici attivi, enabled e in direzione `read` / `bidirectional_candidate`
+- nessuna scrittura ERP, nessuna bidirezionalita runtime, nessuna sincronizzazione estesa
+- perimetro governato:
+  - object type e target level validati
+  - supporto solo source system in allowlist (`sap_b1`)
+  - risoluzione campo esterno tramite `external_field_identifier`
+- endpoint:
+  - `GET /api/custom-fields/erp-read`
+- pagina protetta V1:
+  - `/configurazione/campi-personalizzati/lettura-erp`

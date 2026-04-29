@@ -476,6 +476,9 @@ export default async function IntBindingsPage({ searchParams }: IntBindingsPageP
         }}
       >
         <Link href="/configurazione/campi-personalizzati">Torna a campi personalizzati</Link>
+        <Link href="/configurazione/campi-personalizzati/lettura-erp">
+          Apri read ERP CF-03
+        </Link>
         <Link href="/dashboard">Torna a dashboard</Link>
       </section>
     </section>
