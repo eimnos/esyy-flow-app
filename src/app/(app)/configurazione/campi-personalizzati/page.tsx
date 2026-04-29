@@ -711,6 +711,9 @@ export default async function CustomFieldsPage({ searchParams }: CustomFieldsPag
           flexWrap: "wrap",
         }}
       >
+        <Link href="/configurazione/campi-personalizzati/binding-tecnici">
+          Apri binding tecnici CF-02
+        </Link>
         <Link href="/dashboard">Torna a dashboard</Link>
         <Link href="/anagrafiche">Torna ad anagrafiche</Link>
       </section>
