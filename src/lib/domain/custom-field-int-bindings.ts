@@ -10,6 +10,12 @@ import {
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type RawRow = Record<string, unknown>;
+type DbErrorLike = {
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+  code?: string | null;
+};
 
 const SAFE_LIST_LIMIT = 2000;
 
@@ -81,7 +87,26 @@ const nowIso = () => new Date().toISOString();
 
 const looksLikeMissingTable = (message: string) => {
   const normalized = message.toLowerCase();
-  return normalized.includes("could not find the table") || normalized.includes("schema cache");
+  if (normalized.includes("column") && normalized.includes("schema cache")) {
+    return false;
+  }
+  return normalized.includes("could not find the table");
+};
+
+const looksLikeSchemaColumnMismatch = (message: string) => {
+  const normalized = message.toLowerCase();
+  return normalized.includes("column") && normalized.includes("schema cache");
+};
+
+const formatDbError = (error: DbErrorLike) => {
+  const chunks = [error.message, error.details, error.hint]
+    .map((item) => `${item ?? ""}`.trim())
+    .filter(Boolean);
+  const fullMessage = chunks.length > 0 ? chunks.join(" | ") : "Unknown query error";
+  return {
+    fullMessage,
+    code: `${error.code ?? ""}`.trim() || null,
+  };
 };
 
 const normalizeDirectionMode = (
@@ -429,6 +454,73 @@ const tryInsertBinding = async (payload: Record<string, unknown>) => {
   return admin.from(TABLES.intFieldBindings).insert(payload as never);
 };
 
+const buildInsertPayloadVariants = (
+  basePayload: Record<string, unknown>,
+  directionMode: IntFieldBindingDirectionMode,
+) => {
+  const { status, app_field_definition_id, ...rest } = basePayload;
+  const definitionId = app_field_definition_id;
+  const legacyDirectionMode = toLegacyDirectionMode(directionMode);
+
+  const variants: Record<string, unknown>[] = [
+    {
+      ...rest,
+      status,
+      app_field_definition_id: definitionId,
+      direction_mode: directionMode,
+    },
+    {
+      ...rest,
+      status,
+      app_field_definition_id: definitionId,
+      direction_mode: legacyDirectionMode,
+    },
+    {
+      ...rest,
+      binding_status: status,
+      app_field_definition_id: definitionId,
+      direction_mode: directionMode,
+    },
+    {
+      ...rest,
+      binding_status: status,
+      app_field_definition_id: definitionId,
+      direction_mode: legacyDirectionMode,
+    },
+    {
+      ...rest,
+      status,
+      custom_field_definition_id: definitionId,
+      direction_mode: directionMode,
+    },
+    {
+      ...rest,
+      status,
+      custom_field_definition_id: definitionId,
+      direction_mode: legacyDirectionMode,
+    },
+    {
+      ...rest,
+      binding_status: status,
+      custom_field_definition_id: definitionId,
+      direction_mode: directionMode,
+    },
+    {
+      ...rest,
+      binding_status: status,
+      custom_field_definition_id: definitionId,
+      direction_mode: legacyDirectionMode,
+    },
+  ];
+
+  const deduped = new Map<string, Record<string, unknown>>();
+  variants.forEach((variant) => {
+    deduped.set(JSON.stringify(variant), variant);
+  });
+
+  return [...deduped.values()];
+};
+
 export const createTenantIntFieldBinding = async (
   tenantId: string,
   userId: string | null,
@@ -558,7 +650,7 @@ export const createTenantIntFieldBinding = async (
   try {
     const now = nowIso();
     const bindingId = randomUUID();
-    const payload: Record<string, unknown> = {
+    const basePayload: Record<string, unknown> = {
       id: bindingId,
       tenant_id: tenantId,
       code: normalizedCode,
@@ -581,39 +673,58 @@ export const createTenantIntFieldBinding = async (
       updated_by_user_id: userId,
     };
 
-    let insertResult = await tryInsertBinding(payload);
-    if (insertResult.error) {
-      const fallbackPayload = {
-        ...payload,
-        direction_mode: toLegacyDirectionMode(directionMode),
-      };
-      const fallbackResult = await tryInsertBinding(fallbackPayload);
-      if (!fallbackResult.error) {
-        return {
-          bindingId,
-          warnings: [
-            "direction_mode normalizzato in fallback legacy (read_only/write_only/bidirectional).",
-          ],
-          error: null,
-        };
+    const payloadVariants = buildInsertPayloadVariants(basePayload, directionMode);
+    const variantLabels = [
+      "status+app_field_definition_id+direction_mode(new)",
+      "status+app_field_definition_id+direction_mode(legacy)",
+      "binding_status+app_field_definition_id+direction_mode(new)",
+      "binding_status+app_field_definition_id+direction_mode(legacy)",
+      "status+custom_field_definition_id+direction_mode(new)",
+      "status+custom_field_definition_id+direction_mode(legacy)",
+      "binding_status+custom_field_definition_id+direction_mode(new)",
+      "binding_status+custom_field_definition_id+direction_mode(legacy)",
+    ];
+
+    const attemptErrors: string[] = [];
+    const warnings: string[] = [];
+    let inserted = false;
+
+    for (let index = 0; index < payloadVariants.length; index += 1) {
+      const variant = payloadVariants[index];
+      const attempt = await tryInsertBinding(variant);
+      if (!attempt.error) {
+        inserted = true;
+        if (index > 0) {
+          warnings.push(
+            `Inserimento completato con variante mapping #${index + 1}: ${variantLabels[index] ?? "alt-mapping"}.`,
+          );
+        }
+        break;
       }
-      insertResult = fallbackResult;
+
+      const { fullMessage } = formatDbError(attempt.error);
+      attemptErrors.push(
+        `Attempt #${index + 1} (${variantLabels[index] ?? "alt-mapping"}): ${fullMessage}`,
+      );
     }
 
-    if (insertResult.error) {
-      const message = insertResult.error.message ?? "Unknown query error";
+    if (!inserted) {
+      const lastErrorMessage = attemptErrors[attemptErrors.length - 1] ?? "Unknown query error";
+      const firstDbMessage = lastErrorMessage.split(": ").slice(1).join(": ") || lastErrorMessage;
       return {
         bindingId: null,
         warnings: [],
-        error: looksLikeMissingTable(message)
+        error: looksLikeMissingTable(firstDbMessage)
           ? "Tabella int_field_bindings non presente nel DB esposto."
-          : `Errore insert ${TABLES.intFieldBindings}: ${message}`,
+          : looksLikeSchemaColumnMismatch(firstDbMessage)
+            ? `Mismatch colonne int_field_bindings nel runtime POST: ${attemptErrors.join(" || ")}`
+            : `Errore insert ${TABLES.intFieldBindings}: ${attemptErrors.join(" || ")}`,
       };
     }
 
     return {
       bindingId,
-      warnings: [],
+      warnings,
       error: null,
     };
   } catch (caughtError) {
