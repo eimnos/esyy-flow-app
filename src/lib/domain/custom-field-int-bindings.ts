@@ -83,8 +83,6 @@ const normalizeCode = (raw: string) =>
     .replace(/^_+|_+$/g, "")
     .replace(/_{2,}/g, "_");
 
-const nowIso = () => new Date().toISOString();
-
 const looksLikeMissingTable = (message: string) => {
   const normalized = message.toLowerCase();
   if (normalized.includes("column") && normalized.includes("schema cache")) {
@@ -296,10 +294,14 @@ const mapBindingRow = (
     normalizeSyncMode(stringFromRow(row, ["sync_mode"])) ?? "manual";
 
   const definition = definitionLookup.get(customFieldDefinitionId) ?? null;
+  const externalIdentifier = stringFromRow(row, [
+    "external_field_identifier",
+    "erp_field_name",
+  ]);
 
   return {
     id,
-    code: parseString(row.code) || id,
+    code: parseString(row.code) || externalIdentifier || id,
     status,
     isEnabled:
       boolFromRow(row, ["is_enabled"]) ?? (status === "active" || status === "draft"),
@@ -312,7 +314,7 @@ const mapBindingRow = (
     sourceSystemCode: stringFromRow(row, ["source_system_code"]) || "unknown",
     erpEntitySet: stringFromRow(row, ["erp_entity_set"]) || "unknown",
     erpObjectType: stringFromRow(row, ["erp_object_type"]) || "unknown",
-    erpFieldName: stringFromRow(row, ["erp_field_name"]) || "unknown",
+    erpFieldName: externalIdentifier || "unknown",
     erpIsUdf: boolFromRow(row, ["erp_is_udf"]) ?? false,
     directionMode,
     syncMode,
@@ -396,20 +398,13 @@ export const getTenantIntFieldBindingsCatalog = async (
 };
 
 export type CreateIntFieldBindingInput = {
-  code: string;
   status: IntFieldBindingStatus;
   customFieldDefinitionId: string;
   objectTypeCode: string;
   targetLevel: string;
-  lineContextType?: string;
   sourceSystemCode: string;
-  erpEntitySet: string;
-  erpObjectType: string;
-  erpFieldName: string;
-  erpIsUdf: boolean;
+  externalFieldIdentifier: string;
   directionMode: IntFieldBindingDirectionMode;
-  syncMode: IntFieldBindingSyncMode;
-  isEnabled: boolean;
 };
 
 export type CreateIntFieldBindingResult = {
@@ -458,72 +453,22 @@ const buildInsertPayloadVariants = (
   basePayload: Record<string, unknown>,
   directionMode: IntFieldBindingDirectionMode,
 ) => {
-  const { status, app_field_definition_id, ...rest } = basePayload;
-  const definitionId = app_field_definition_id;
-  const legacyDirectionMode = toLegacyDirectionMode(directionMode);
-
   const variants: Record<string, unknown>[] = [
     {
-      ...rest,
-      status,
-      app_field_definition_id: definitionId,
+      ...basePayload,
       direction_mode: directionMode,
     },
     {
-      ...rest,
-      status,
-      app_field_definition_id: definitionId,
-      direction_mode: legacyDirectionMode,
-    },
-    {
-      ...rest,
-      binding_status: status,
-      app_field_definition_id: definitionId,
-      direction_mode: directionMode,
-    },
-    {
-      ...rest,
-      binding_status: status,
-      app_field_definition_id: definitionId,
-      direction_mode: legacyDirectionMode,
-    },
-    {
-      ...rest,
-      status,
-      custom_field_definition_id: definitionId,
-      direction_mode: directionMode,
-    },
-    {
-      ...rest,
-      status,
-      custom_field_definition_id: definitionId,
-      direction_mode: legacyDirectionMode,
-    },
-    {
-      ...rest,
-      binding_status: status,
-      custom_field_definition_id: definitionId,
-      direction_mode: directionMode,
-    },
-    {
-      ...rest,
-      binding_status: status,
-      custom_field_definition_id: definitionId,
-      direction_mode: legacyDirectionMode,
+      ...basePayload,
+      direction_mode: toLegacyDirectionMode(directionMode),
     },
   ];
-
-  const deduped = new Map<string, Record<string, unknown>>();
-  variants.forEach((variant) => {
-    deduped.set(JSON.stringify(variant), variant);
-  });
-
-  return [...deduped.values()];
+  return variants;
 };
 
 export const createTenantIntFieldBinding = async (
   tenantId: string,
-  userId: string | null,
+  _userId: string | null,
   input: CreateIntFieldBindingInput,
 ): Promise<CreateIntFieldBindingResult> => {
   if (!tenantId) {
@@ -534,20 +479,11 @@ export const createTenantIntFieldBinding = async (
     };
   }
 
-  const normalizedCode = normalizeCode(input.code);
   const status = normalizeStatus(input.status);
   const objectType = normalizeObjectType(input.objectTypeCode);
   const targetLevel = normalizeTargetLevel(input.targetLevel);
   const directionMode = normalizeDirectionMode(input.directionMode);
-  const syncMode = normalizeSyncMode(input.syncMode);
 
-  if (!normalizedCode) {
-    return {
-      bindingId: null,
-      warnings: [],
-      error: "Code binding obbligatorio.",
-    };
-  }
   if (!status) {
     return {
       bindingId: null,
@@ -576,20 +512,10 @@ export const createTenantIntFieldBinding = async (
       error: "direction_mode non supportato.",
     };
   }
-  if (!syncMode) {
-    return {
-      bindingId: null,
-      warnings: [],
-      error: "sync_mode non supportato.",
-    };
-  }
 
   const customFieldDefinitionId = parseString(input.customFieldDefinitionId);
   const sourceSystemCode = normalizeCode(input.sourceSystemCode);
-  const erpEntitySet = parseString(input.erpEntitySet);
-  const erpObjectType = parseString(input.erpObjectType);
-  const erpFieldName = parseString(input.erpFieldName);
-  const lineContextType = normalizeCode(input.lineContextType ?? "");
+  const externalFieldIdentifier = parseString(input.externalFieldIdentifier);
 
   if (!customFieldDefinitionId) {
     return {
@@ -605,32 +531,11 @@ export const createTenantIntFieldBinding = async (
       error: "source_system_code obbligatorio.",
     };
   }
-  if (!erpEntitySet) {
+  if (!externalFieldIdentifier) {
     return {
       bindingId: null,
       warnings: [],
-      error: "erp_entity_set obbligatorio.",
-    };
-  }
-  if (!erpObjectType) {
-    return {
-      bindingId: null,
-      warnings: [],
-      error: "erp_object_type obbligatorio.",
-    };
-  }
-  if (!erpFieldName) {
-    return {
-      bindingId: null,
-      warnings: [],
-      error: "erp_field_name obbligatorio.",
-    };
-  }
-  if (targetLevel === "line" && !lineContextType) {
-    return {
-      bindingId: null,
-      warnings: [],
-      error: "line_context_type obbligatorio quando target_level = line.",
+      error: "external_field_identifier obbligatorio.",
     };
   }
 
@@ -648,41 +553,22 @@ export const createTenantIntFieldBinding = async (
   }
 
   try {
-    const now = nowIso();
     const bindingId = randomUUID();
-    const basePayload: Record<string, unknown> = {
+    const basePayload = {
       id: bindingId,
       tenant_id: tenantId,
-      code: normalizedCode,
-      status,
-      app_field_definition_id: customFieldDefinitionId,
+      custom_field_definition_id: customFieldDefinitionId,
       object_type_code: objectType,
       target_level: targetLevel,
-      line_context_type: targetLevel === "line" ? lineContextType : null,
       source_system_code: sourceSystemCode,
-      erp_entity_set: erpEntitySet,
-      erp_object_type: erpObjectType,
-      erp_field_name: erpFieldName,
-      erp_is_udf: input.erpIsUdf,
-      direction_mode: directionMode,
-      sync_mode: syncMode,
-      is_enabled: input.isEnabled,
-      created_at: now,
-      updated_at: now,
-      created_by_user_id: userId,
-      updated_by_user_id: userId,
-    };
+      external_field_identifier: externalFieldIdentifier,
+      status,
+    } satisfies Record<string, unknown>;
 
     const payloadVariants = buildInsertPayloadVariants(basePayload, directionMode);
     const variantLabels = [
-      "status+app_field_definition_id+direction_mode(new)",
-      "status+app_field_definition_id+direction_mode(legacy)",
-      "binding_status+app_field_definition_id+direction_mode(new)",
-      "binding_status+app_field_definition_id+direction_mode(legacy)",
-      "status+custom_field_definition_id+direction_mode(new)",
-      "status+custom_field_definition_id+direction_mode(legacy)",
-      "binding_status+custom_field_definition_id+direction_mode(new)",
-      "binding_status+custom_field_definition_id+direction_mode(legacy)",
+      "contract-columns+direction_mode(new)",
+      "contract-columns+direction_mode(legacy)",
     ];
 
     const attemptErrors: string[] = [];
@@ -702,9 +588,9 @@ export const createTenantIntFieldBinding = async (
         break;
       }
 
-      const { fullMessage } = formatDbError(attempt.error);
+      const { fullMessage, code } = formatDbError(attempt.error);
       attemptErrors.push(
-        `Attempt #${index + 1} (${variantLabels[index] ?? "alt-mapping"}): ${fullMessage}`,
+        `Attempt #${index + 1} (${variantLabels[index] ?? "alt-mapping"}): ${fullMessage}${code ? ` [code=${code}]` : ""}`,
       );
     }
 
