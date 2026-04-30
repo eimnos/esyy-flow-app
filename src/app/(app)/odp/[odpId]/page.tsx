@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { ContextualCustomFieldPanel } from "@/app/(app)/_components/contextual-custom-field-panel";
 import OdpCockpitTreeGrid from "./cockpit-tree-grid";
 import { getTenantOdpCockpit } from "@/lib/domain/odp";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
@@ -122,6 +123,23 @@ export default async function OdpCockpitPage({ params }: OdpCockpitPageProps) {
           {cockpit.error}
         </p>
       ) : null}
+
+      <ContextualCustomFieldPanel
+        tenantId={selectedTenantId}
+        objectTypeCode="production_orders"
+        screenCode="odp_cockpit"
+        sectionCode="controllo_odp"
+        contextLabel="ODP / Cockpit"
+        contextDescription="Creazione contestuale campi header dell'ordine di produzione nel cockpit."
+        fieldDomainCode="production"
+        allowedTargetLevels={["header"]}
+        defaultTargetLevel="header"
+        valuePreview={{
+          objectTypeCode: "production_orders",
+          targetLevel: "header",
+          targetRecordId: resolvedParams.odpId,
+        }}
+      />
 
       {cockpit.emptyStateHint ? (
         <section

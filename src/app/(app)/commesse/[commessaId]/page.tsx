@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { ContextualCustomFieldPanel } from "@/app/(app)/_components/contextual-custom-field-panel";
 import { CommessaDetailTabs } from "@/app/(app)/commesse/_components/commessa-detail-tabs";
 import { getTenantCommessaOverviewById, type CommessaOverviewIssue } from "@/lib/domain/commesse";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
@@ -114,6 +115,23 @@ export default async function CommessaDetailPage({ params }: CommessaDetailPageP
       </header>
 
       <CommessaDetailTabs commessaId={resolvedParams.commessaId} activeTab="overview" />
+
+      <ContextualCustomFieldPanel
+        tenantId={selectedTenantId}
+        objectTypeCode="projects"
+        screenCode="commesse_overview"
+        sectionCode="controllo_commessa"
+        contextLabel="Commesse / Overview"
+        contextDescription="Creazione contestuale campi header per classificazione e controllo commessa."
+        fieldDomainCode="production"
+        allowedTargetLevels={["header"]}
+        defaultTargetLevel="header"
+        valuePreview={{
+          objectTypeCode: "projects",
+          targetLevel: "header",
+          targetRecordId: resolvedParams.commessaId,
+        }}
+      />
 
       {overview.error ? (
         <p

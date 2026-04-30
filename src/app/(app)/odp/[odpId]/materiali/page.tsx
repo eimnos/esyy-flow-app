@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { ContextualCustomFieldPanel } from "@/app/(app)/_components/contextual-custom-field-panel";
 import {
   getTenantOdpMaterials,
   type OdpBinaryFilter,
@@ -87,6 +88,7 @@ export default async function OdpMaterialsPage({
   });
 
   const orderCode = materials.order?.code ?? resolvedParams.odpId;
+  const firstLinePreview = materials.items.find((item) => item.phaseId);
   const contoLavoroLink = materials.order?.commessaId
     ? `/commesse/${materials.order.commessaId}/conto-lavoro`
     : `/odp/${resolvedParams.odpId}?section=conto-lavoro`;
@@ -100,6 +102,29 @@ export default async function OdpMaterialsPage({
           prelevato, consumato e scostamento.
         </p>
       </header>
+
+      <ContextualCustomFieldPanel
+        tenantId={selectedTenantId}
+        objectTypeCode="production_order_phases"
+        screenCode="odp_materiali_effettivi"
+        sectionCode="materiali_effettivi"
+        lineContextType="production_order_phase_materials"
+        contextLabel="ODP / Materiali effettivi"
+        contextDescription="Creazione contestuale campi line per le righe materiali reali."
+        fieldDomainCode="production"
+        allowedTargetLevels={["line"]}
+        defaultTargetLevel="line"
+        valuePreview={
+          firstLinePreview?.phaseId
+            ? {
+                objectTypeCode: "production_order_phases",
+                targetLevel: "line",
+                targetRecordId: firstLinePreview.phaseId,
+                targetLineRecordId: firstLinePreview.id,
+              }
+            : undefined
+        }
+      />
 
       {materials.error ? (
         <p

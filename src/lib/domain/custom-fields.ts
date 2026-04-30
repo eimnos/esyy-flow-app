@@ -180,6 +180,7 @@ export type CustomFieldBindingSummary = {
   sectionCode: string;
   targetLevel: CustomFieldTargetLevel;
   lineContextType: string | null;
+  sortOrder: number;
   visibilityMode: string;
   editabilityMode: string;
   requirednessMode: string;
@@ -208,6 +209,7 @@ export type CustomFieldDefinitionSummary = {
   isSearchable: boolean;
   isReportable: boolean;
   isDefaultVisible: boolean;
+  defaultValue: string | null;
   enumOptions: string[];
   bindings: CustomFieldBindingSummary[];
 };
@@ -339,6 +341,46 @@ const extractEnumOptions = (row: RawRow) => {
       .filter(Boolean);
   }
   return [];
+};
+
+const extractDefaultValue = (row: RawRow) => {
+  const raw = row.default_value_json;
+  if (raw === null || raw === undefined) {
+    return null;
+  }
+
+  if (typeof raw === "string") {
+    const normalized = raw.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return `${raw}`;
+  }
+
+  if (typeof raw === "boolean") {
+    return raw ? "true" : "false";
+  }
+
+  const json = asJsonRecord(raw);
+  const candidates = [json.default, json.default_value, json.value];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") {
+      const normalized = candidate.trim();
+      if (normalized.length > 0) {
+        return normalized;
+      }
+      continue;
+    }
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return `${candidate}`;
+    }
+    if (typeof candidate === "boolean") {
+      return candidate ? "true" : "false";
+    }
+  }
+
+  return null;
 };
 
 const toTypedValue = (valueRow: RawRow, fieldType: CustomFieldV1Type) => {
@@ -520,6 +562,7 @@ const mapBinding = (row: RawRow): CustomFieldBindingSummary | null => {
     sectionCode: parseString(row.section_code) || "general",
     targetLevel,
     lineContextType: parseString(row.line_context_type) || null,
+    sortOrder: readNumber(row, ["sort_order"]) ?? 100,
     visibilityMode: parseString(row.visibility_mode) || "visible",
     editabilityMode: parseString(row.editability_mode) || "editable",
     requirednessMode: parseString(row.requiredness_mode) || "optional",
@@ -617,6 +660,7 @@ export const getTenantCustomFieldCatalog = async (
           isSearchable: readBoolean(versionRow, ["is_searchable"]) ?? false,
           isReportable: readBoolean(versionRow, ["is_reportable"]) ?? false,
           isDefaultVisible: readBoolean(versionRow, ["is_default_visible"]) ?? true,
+          defaultValue: extractDefaultValue(versionRow),
           enumOptions: extractEnumOptions(versionRow),
           bindings: bindingsByVersionId.get(versionId) ?? [],
         } satisfies CustomFieldDefinitionSummary;
@@ -663,6 +707,8 @@ export type CreateCustomFieldDefinitionInput = {
   editabilityMode?: "editable" | "read_only";
   requirednessMode?: "optional" | "required";
   enumOptions?: string[];
+  defaultValue?: string;
+  sortOrder?: number;
 };
 
 export type CreateCustomFieldDefinitionResult = {
@@ -743,6 +789,12 @@ export const createTenantCustomFieldDefinition = async (
     };
   }
 
+  const requestedSortOrder =
+    typeof input.sortOrder === "number" && Number.isFinite(input.sortOrder)
+      ? Math.trunc(input.sortOrder)
+      : 100;
+  const sortOrder = Math.max(1, Math.min(10000, requestedSortOrder));
+
   try {
     const admin = getSupabaseAdminClient();
     const now = nowIso();
@@ -802,8 +854,14 @@ export const createTenantCustomFieldDefinition = async (
     }
 
     const enumOptions = (input.enumOptions ?? []).map((option) => option.trim()).filter(Boolean);
+    const defaultValue = parseString(input.defaultValue);
     const defaultValueJson =
-      enumOptions.length > 0 ? { options: enumOptions } : null;
+      enumOptions.length > 0 || defaultValue.length > 0
+        ? {
+            ...(enumOptions.length > 0 ? { options: enumOptions } : {}),
+            ...(defaultValue.length > 0 ? { default: defaultValue } : {}),
+          }
+        : null;
 
     const versionInsert = await admin.from(TABLES.versions).insert({
       id: versionId,
@@ -855,7 +913,7 @@ export const createTenantCustomFieldDefinition = async (
       section_code: normalizeCode(input.sectionCode) || "general",
       target_level: targetLevel,
       line_context_type: targetLevel === "line" ? normalizeCode(input.lineContextType ?? "") || null : null,
-      sort_order: 100,
+      sort_order: sortOrder,
       visibility_mode: input.visibilityMode ?? "visible",
       editability_mode: input.editabilityMode ?? "editable",
       requiredness_mode: input.requirednessMode ?? (input.isRequired ? "required" : "optional"),
