@@ -4,6 +4,14 @@ import { redirect } from "next/navigation";
 
 import { ContextualCustomFieldPanel } from "@/app/(app)/_components/contextual-custom-field-panel";
 import OdpCockpitTreeGrid from "./cockpit-tree-grid";
+import {
+  formatContextSectionLabel,
+  resolveContextualCustomFields,
+} from "@/lib/domain/custom-field-contextual";
+import {
+  getTenantCustomFieldCatalog,
+  getTenantCustomFieldValues,
+} from "@/lib/domain/custom-fields";
 import { getTenantOdpCockpit } from "@/lib/domain/odp";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
@@ -32,6 +40,16 @@ const delayLabel = (isDelayed: boolean, delayDays: number | null) => {
   return `Si (${delayDays} gg)`;
 };
 
+const formatCustomFieldValue = (value: string | number | boolean | null, defaultValue: string | null) => {
+  if (value === null) {
+    return defaultValue ?? "N/D";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Si" : "No";
+  }
+  return `${value}`;
+};
+
 export default async function OdpCockpitPage({ params }: OdpCockpitPageProps) {
   const cookieStore = await cookies();
   const selectedTenantId = cookieStore.get(ACTIVE_TENANT_COOKIE)?.value ?? "";
@@ -42,6 +60,33 @@ export default async function OdpCockpitPage({ params }: OdpCockpitPageProps) {
   const resolvedParams = await params;
   const cockpit = await getTenantOdpCockpit(selectedTenantId, resolvedParams.odpId);
   const order = cockpit.order;
+  const customFieldCatalog = await getTenantCustomFieldCatalog(selectedTenantId);
+  const odpHeaderContextFields = resolveContextualCustomFields({
+    catalog: customFieldCatalog,
+    objectTypeCode: "production_orders",
+    screenCode: "odp_cockpit",
+    targetLevels: ["header"],
+  });
+  const odpHeaderValueSnapshot = order
+    ? await getTenantCustomFieldValues(selectedTenantId, {
+        objectTypeCode: "production_orders",
+        targetLevel: "header",
+        targetRecordId: resolvedParams.odpId,
+      })
+    : null;
+  const odpValueByDefinitionId = new Map(
+    (odpHeaderValueSnapshot?.values ?? []).map((item) => [
+      item.customFieldDefinitionId,
+      item.value,
+    ]),
+  );
+  const odpCustomSections = [...new Set(odpHeaderContextFields.map((item) => item.binding.sectionCode))].map(
+    (sectionCode) => ({
+      sectionCode,
+      label: formatContextSectionLabel(sectionCode),
+      fields: odpHeaderContextFields.filter((item) => item.binding.sectionCode === sectionCode),
+    }),
+  );
 
   return (
     <section style={{ display: "grid", gap: "1rem", maxWidth: "1400px" }}>
@@ -140,6 +185,70 @@ export default async function OdpCockpitPage({ params }: OdpCockpitPageProps) {
           targetRecordId: resolvedParams.odpId,
         }}
       />
+
+      {odpCustomSections.length > 0 ? (
+        <section
+          style={{
+            border: "1px solid #d1d5db",
+            borderRadius: "0.75rem",
+            background: "#fff",
+            padding: "0.85rem",
+            display: "grid",
+            gap: "0.7rem",
+          }}
+        >
+          <strong>Campi personalizzati contestuali (header ODP)</strong>
+          {odpCustomSections.map((section) => (
+            <article
+              key={section.sectionCode}
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: "0.65rem",
+                background: "#f8fafc",
+                padding: "0.65rem",
+                display: "grid",
+                gap: "0.55rem",
+              }}
+            >
+              <strong style={{ fontSize: "0.9rem" }}>{section.label}</strong>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: "0.55rem",
+                }}
+              >
+                {section.fields.map((field) => (
+                  <div
+                    key={`${field.definition.definitionId}:${field.binding.id}`}
+                    style={{
+                      border: "1px solid #dbe2ea",
+                      borderRadius: "0.55rem",
+                      background: "#fff",
+                      padding: "0.5rem",
+                      display: "grid",
+                      gap: "0.2rem",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.8rem", color: "#475569" }}>
+                      {field.definition.label}
+                    </span>
+                    <strong>
+                      {formatCustomFieldValue(
+                        odpValueByDefinitionId.get(field.definition.definitionId) ?? null,
+                        field.definition.defaultValue,
+                      )}
+                    </strong>
+                    <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                      ordine: {field.binding.sortOrder}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       {cockpit.emptyStateHint ? (
         <section
