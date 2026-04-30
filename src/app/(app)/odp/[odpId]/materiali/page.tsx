@@ -4,6 +4,14 @@ import { redirect } from "next/navigation";
 
 import { ContextualCustomFieldPanel } from "@/app/(app)/_components/contextual-custom-field-panel";
 import {
+  formatContextSectionLabel,
+  resolveContextualCustomFields,
+} from "@/lib/domain/custom-field-contextual";
+import {
+  getTenantCustomFieldCatalog,
+  getTenantCustomFieldLineValuesByLineIds,
+} from "@/lib/domain/custom-fields";
+import {
   getTenantOdpMaterials,
   type OdpBinaryFilter,
   type OdpMaterialDifferenceFilter,
@@ -56,6 +64,16 @@ const formatDiff = (value: number | null) => {
 
 const boolLabel = (value: boolean) => (value ? "Si" : "No");
 
+const formatCustomFieldValue = (value: string | number | boolean | null, defaultValue: string | null) => {
+  if (value === null) {
+    return defaultValue ?? "N/D";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Si" : "No";
+  }
+  return `${value}`;
+};
+
 export default async function OdpMaterialsPage({
   params,
   searchParams,
@@ -88,10 +106,56 @@ export default async function OdpMaterialsPage({
   });
 
   const orderCode = materials.order?.code ?? resolvedParams.odpId;
+  const customFieldCatalog = await getTenantCustomFieldCatalog(selectedTenantId);
+  const materialsLineContextFields = resolveContextualCustomFields({
+    catalog: customFieldCatalog,
+    objectTypeCode: "production_order_phases",
+    screenCode: "odp_materiali_effettivi",
+    targetLevels: ["line"],
+  });
+  const lineValuesSnapshot =
+    materialsLineContextFields.length > 0 && materials.items.length > 0
+      ? await getTenantCustomFieldLineValuesByLineIds(selectedTenantId, {
+          objectTypeCode: "production_order_phases",
+          targetLineRecordIds: materials.items.map((item) => item.id),
+        })
+      : null;
+  const lineDefinitionIdSet = new Set(
+    materialsLineContextFields.map((item) => item.definition.definitionId),
+  );
+  const lineValuesByRecordId = new Map<
+    string,
+    Array<{
+      definitionId: string;
+      targetRecordId: string;
+      value: string | number | boolean | null;
+    }>
+  >();
+  (lineValuesSnapshot?.values ?? []).forEach((item) => {
+    if (!lineDefinitionIdSet.has(item.customFieldDefinitionId)) {
+      return;
+    }
+    const current = lineValuesByRecordId.get(item.targetLineRecordId) ?? [];
+    current.push({
+      definitionId: item.customFieldDefinitionId,
+      targetRecordId: item.targetRecordId,
+      value: item.value,
+    });
+    lineValuesByRecordId.set(item.targetLineRecordId, current);
+  });
+  const lineCustomSections = [...new Set(materialsLineContextFields.map((item) => item.binding.sectionCode))].map(
+    (sectionCode) => ({
+      sectionCode,
+      label: formatContextSectionLabel(sectionCode),
+      fields: materialsLineContextFields.filter((item) => item.binding.sectionCode === sectionCode),
+    }),
+  );
   const firstLinePreview = materials.items.find((item) => item.phaseId);
   const contoLavoroLink = materials.order?.commessaId
     ? `/commesse/${materials.order.commessaId}/conto-lavoro`
     : `/odp/${resolvedParams.odpId}?section=conto-lavoro`;
+  const customFieldWarnings = lineValuesSnapshot?.warnings ?? [];
+  const customFieldError = lineValuesSnapshot?.error ?? null;
 
   return (
     <section style={{ display: "grid", gap: "1rem", maxWidth: "1320px" }}>
@@ -125,6 +189,53 @@ export default async function OdpMaterialsPage({
             : undefined
         }
       />
+
+      {lineCustomSections.length > 0 ? (
+        <section
+          style={{
+            border: "1px solid #d1d5db",
+            borderRadius: "0.75rem",
+            background: "#fff",
+            padding: "0.85rem",
+            display: "grid",
+            gap: "0.65rem",
+          }}
+        >
+          <strong>Campi personalizzati contestuali (line materiali)</strong>
+          {lineCustomSections.map((section) => (
+            <article
+              key={section.sectionCode}
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: "0.65rem",
+                background: "#f8fafc",
+                padding: "0.65rem",
+                display: "grid",
+                gap: "0.45rem",
+              }}
+            >
+              <strong style={{ fontSize: "0.9rem" }}>{section.label}</strong>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                {section.fields.map((field) => (
+                  <span
+                    key={`${field.definition.definitionId}:${field.binding.id}`}
+                    style={{
+                      border: "1px solid #d1d5db",
+                      borderRadius: "999px",
+                      background: "#fff",
+                      padding: "0.2rem 0.5rem",
+                      fontSize: "0.8rem",
+                      color: "#334155",
+                    }}
+                  >
+                    {field.definition.label} (ord. {field.binding.sortOrder})
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       {materials.error ? (
         <p
@@ -334,12 +445,13 @@ export default async function OdpMaterialsPage({
             <tr style={{ background: "#f8fafc" }}>
               {[
                 "ODP",
-                "Materiale",
-                "Stato",
-                "Quantita",
-                "Modifiche",
-                "Lotti",
-                "Collegamenti",
+                  "Materiale",
+                  "Stato",
+                  "Quantita",
+                  "Custom fields line",
+                  "Modifiche",
+                  "Lotti",
+                  "Collegamenti",
                 "Azioni",
               ].map((header) => (
                 <th
@@ -388,6 +500,31 @@ export default async function OdpMaterialsPage({
                   </span>
                 </td>
                 <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
+                  {materialsLineContextFields.length > 0 ? (
+                    <div style={{ display: "grid", gap: "0.25rem" }}>
+                      {materialsLineContextFields.map((field) => {
+                        const lineValues = lineValuesByRecordId.get(item.id) ?? [];
+                        const value = lineValues.find(
+                          (lineValue) =>
+                            lineValue.definitionId === field.definition.definitionId &&
+                            (!item.phaseId || lineValue.targetRecordId === item.phaseId),
+                        );
+                        return (
+                          <span
+                            key={`${item.id}:${field.definition.definitionId}:${field.binding.id}`}
+                            style={{ fontSize: "0.82rem", color: "#334155" }}
+                          >
+                            <strong>{field.definition.label}:</strong>{" "}
+                            {formatCustomFieldValue(value?.value ?? null, field.definition.defaultValue)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span style={{ color: "#64748b", fontSize: "0.85rem" }}>N/D</span>
+                  )}
+                </td>
+                <td style={{ padding: "0.65rem", borderBottom: "1px solid #f1f5f9" }}>
                   <span style={{ display: "grid", gap: "0.2rem" }}>
                     <span>Manuale: {boolLabel(item.hasManualChange)}</span>
                     <span>Sostituzione: {boolLabel(item.hasSubstitution)}</span>
@@ -433,6 +570,22 @@ export default async function OdpMaterialsPage({
         ) : null}
       </section>
 
+      {customFieldError ? (
+        <p
+          role="alert"
+          style={{
+            margin: 0,
+            border: "1px solid #fecaca",
+            borderRadius: "0.65rem",
+            background: "#fef2f2",
+            color: "#991b1b",
+            padding: "0.8rem",
+          }}
+        >
+          {customFieldError}
+        </p>
+      ) : null}
+
       <section
         style={{
           borderTop: "1px solid #e2e8f0",
@@ -470,6 +623,26 @@ export default async function OdpMaterialsPage({
         >
           <strong style={{ fontSize: "0.9rem" }}>Warning query</strong>
           {materials.warnings.map((warning) => (
+            <span key={warning} style={{ fontSize: "0.85rem", color: "#78350f" }}>
+              {warning}
+            </span>
+          ))}
+        </section>
+      ) : null}
+
+      {customFieldWarnings.length > 0 ? (
+        <section
+          style={{
+            border: "1px solid #fde68a",
+            borderRadius: "0.65rem",
+            background: "#fffbeb",
+            padding: "0.75rem",
+            display: "grid",
+            gap: "0.35rem",
+          }}
+        >
+          <strong style={{ fontSize: "0.9rem" }}>Warning query custom fields line</strong>
+          {customFieldWarnings.map((warning) => (
             <span key={warning} style={{ fontSize: "0.85rem", color: "#78350f" }}>
               {warning}
             </span>

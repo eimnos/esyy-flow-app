@@ -1479,3 +1479,195 @@ export const getTenantCustomFieldValues = async (
     };
   }
 };
+
+export type CustomFieldLineValueSummary = {
+  valueId: string;
+  customFieldDefinitionId: string;
+  customFieldDefinitionVersionId: string;
+  fieldKey: string;
+  label: string;
+  fieldType: CustomFieldV1Type;
+  objectTypeCode: string;
+  targetRecordId: string;
+  targetLineRecordId: string;
+  value: string | number | boolean | null;
+  valueSourceType: string;
+  updatedAt: string | null;
+  updatedByUserId: string | null;
+};
+
+export type CustomFieldLineValueListInput = {
+  objectTypeCode: CustomFieldObjectType;
+  targetLineRecordIds: string[];
+};
+
+export type CustomFieldLineValueListResult = {
+  values: CustomFieldLineValueSummary[];
+  sourceTables: string[];
+  warnings: string[];
+  emptyStateHint: string | null;
+  error: string | null;
+};
+
+export const getTenantCustomFieldLineValuesByLineIds = async (
+  tenantId: string,
+  input: CustomFieldLineValueListInput,
+): Promise<CustomFieldLineValueListResult> => {
+  if (!tenantId) {
+    return {
+      values: [],
+      sourceTables: [],
+      warnings: [],
+      emptyStateHint: null,
+      error: "Tenant non valido.",
+    };
+  }
+
+  const objectType = normalizeObjectType(input.objectTypeCode);
+  if (!objectType) {
+    return {
+      values: [],
+      sourceTables: [TABLES.values, TABLES.versions],
+      warnings: [],
+      emptyStateHint: null,
+      error: "Object type non valido.",
+    };
+  }
+
+  const uniqueLineIds = [...new Set(input.targetLineRecordIds.map((value) => parseString(value)).filter(Boolean))];
+  if (uniqueLineIds.length === 0) {
+    return {
+      values: [],
+      sourceTables: [TABLES.values, TABLES.versions],
+      warnings: [],
+      emptyStateHint: "Nessun target_line_record_id disponibile.",
+      error: null,
+    };
+  }
+
+  const lineIds = uniqueLineIds.slice(0, SAFE_LIST_LIMIT);
+  const warnings: string[] = [];
+  if (lineIds.length < uniqueLineIds.length) {
+    warnings.push(
+      `Richiesta line IDs ridotta a ${SAFE_LIST_LIMIT} elementi (ricevuti ${uniqueLineIds.length}).`,
+    );
+  }
+
+  try {
+    const admin = getSupabaseAdminClient();
+    const valuesResult = await admin
+      .from(TABLES.values)
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .eq("object_type_code", objectType)
+      .eq("target_level", "line")
+      .in("target_line_record_id", lineIds)
+      .order("updated_at", { ascending: false })
+      .limit(SAFE_LIST_LIMIT);
+
+    if (valuesResult.error) {
+      const message = valuesResult.error.message ?? "Unknown query error";
+      return {
+        values: [],
+        sourceTables: [TABLES.values, TABLES.versions],
+        warnings,
+        emptyStateHint: null,
+        error: looksLikeMissingTable(message)
+          ? "Tabelle custom field values non presenti nel DB esposto."
+          : `Errore su ${TABLES.values}: ${message}`,
+      };
+    }
+
+    const valueRows = (valuesResult.data ?? []) as RawRow[];
+    if (valueRows.length === 0) {
+      return {
+        values: [],
+        sourceTables: [TABLES.values, TABLES.versions],
+        warnings,
+        emptyStateHint: "Nessun valore custom field line per i target selezionati.",
+        error: null,
+      };
+    }
+
+    const versionIds = [
+      ...new Set(valueRows.map((row) => parseString(row.custom_field_definition_version_id)).filter(Boolean)),
+    ];
+    const versionsResult = await admin
+      .from(TABLES.versions)
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .in("id", versionIds)
+      .limit(SAFE_LIST_LIMIT);
+
+    if (versionsResult.error) {
+      return {
+        values: [],
+        sourceTables: [TABLES.values, TABLES.versions],
+        warnings,
+        emptyStateHint: null,
+        error: `Errore su ${TABLES.versions}: ${versionsResult.error.message ?? "Unknown query error"}`,
+      };
+    }
+
+    const versionsById = new Map<string, RawRow>();
+    ((versionsResult.data ?? []) as RawRow[]).forEach((version) => {
+      const versionId = parseString(version.id);
+      if (versionId) {
+        versionsById.set(versionId, version);
+      }
+    });
+
+    const mappedValues = valueRows
+      .map((valueRow) => {
+        const valueId = parseString(valueRow.id);
+        const versionId = parseString(valueRow.custom_field_definition_version_id);
+        const definitionId = parseString(valueRow.custom_field_definition_id);
+        const targetRecordId = parseString(valueRow.target_record_id);
+        const targetLineRecordId = parseString(valueRow.target_line_record_id);
+        const version = versionsById.get(versionId);
+        if (!valueId || !versionId || !definitionId || !targetRecordId || !targetLineRecordId || !version) {
+          return null;
+        }
+
+        const fieldType = DB_TO_FIELD_TYPE[parseString(version.field_type)] ?? null;
+        if (!fieldType) {
+          return null;
+        }
+
+        return {
+          valueId,
+          customFieldDefinitionId: definitionId,
+          customFieldDefinitionVersionId: versionId,
+          fieldKey: parseString(version.field_key) || definitionId,
+          label: parseString(version.label) || parseString(version.field_key) || definitionId,
+          fieldType,
+          objectTypeCode: parseString(valueRow.object_type_code) || objectType,
+          targetRecordId,
+          targetLineRecordId,
+          value: toTypedValue(valueRow, fieldType),
+          valueSourceType: parseString(valueRow.value_source_type) || "manual",
+          updatedAt: parseString(valueRow.updated_at) || null,
+          updatedByUserId: parseString(valueRow.updated_by_user_id) || null,
+        } satisfies CustomFieldLineValueSummary;
+      })
+      .filter((item): item is CustomFieldLineValueSummary => Boolean(item))
+      .sort((left, right) => left.fieldKey.localeCompare(right.fieldKey, "it"));
+
+    return {
+      values: mappedValues,
+      sourceTables: [TABLES.values, TABLES.versions],
+      warnings,
+      emptyStateHint:
+        mappedValues.length === 0 ? "Valori line presenti ma non risolti nel mapping runtime." : null,
+      error: null,
+    };
+  } catch (caughtError) {
+    return {
+      values: [],
+      sourceTables: [TABLES.values, TABLES.versions],
+      warnings,
+      emptyStateHint: null,
+      error: caughtError instanceof Error ? caughtError.message : "Errore inatteso.",
+    };
+  }
+};

@@ -4,6 +4,14 @@ import { redirect } from "next/navigation";
 
 import { ContextualCustomFieldPanel } from "@/app/(app)/_components/contextual-custom-field-panel";
 import { CommessaDetailTabs } from "@/app/(app)/commesse/_components/commessa-detail-tabs";
+import {
+  formatContextSectionLabel,
+  resolveContextualCustomFields,
+} from "@/lib/domain/custom-field-contextual";
+import {
+  getTenantCustomFieldCatalog,
+  getTenantCustomFieldValues,
+} from "@/lib/domain/custom-fields";
 import { getTenantCommessaOverviewById, type CommessaOverviewIssue } from "@/lib/domain/commesse";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/constants";
 
@@ -67,6 +75,16 @@ const multiActorLabel = (isMultiActor: boolean, actorCount: number | null) => {
   return "Si";
 };
 
+const formatCustomFieldValue = (value: string | number | boolean | null, defaultValue: string | null) => {
+  if (value === null) {
+    return defaultValue ?? "N/D";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Si" : "No";
+  }
+  return `${value}`;
+};
+
 const issueStyle = (severity: CommessaOverviewIssue["severity"]) => {
   if (severity === "high") {
     return {
@@ -101,6 +119,33 @@ export default async function CommessaDetailPage({ params }: CommessaDetailPageP
 
   const resolvedParams = await params;
   const overview = await getTenantCommessaOverviewById(selectedTenantId, resolvedParams.commessaId);
+  const customFieldCatalog = await getTenantCustomFieldCatalog(selectedTenantId);
+  const commessaHeaderContextFields = resolveContextualCustomFields({
+    catalog: customFieldCatalog,
+    objectTypeCode: "projects",
+    screenCode: "commesse_overview",
+    targetLevels: ["header"],
+  });
+  const commessaHeaderValueSnapshot = overview.commessa
+    ? await getTenantCustomFieldValues(selectedTenantId, {
+        objectTypeCode: "projects",
+        targetLevel: "header",
+        targetRecordId: resolvedParams.commessaId,
+      })
+    : null;
+  const commessaValueByDefinitionId = new Map(
+    (commessaHeaderValueSnapshot?.values ?? []).map((item) => [
+      item.customFieldDefinitionId,
+      item.value,
+    ]),
+  );
+  const commessaCustomSections = [...new Set(commessaHeaderContextFields.map((item) => item.binding.sectionCode))].map(
+    (sectionCode) => ({
+      sectionCode,
+      label: formatContextSectionLabel(sectionCode),
+      fields: commessaHeaderContextFields.filter((item) => item.binding.sectionCode === sectionCode),
+    }),
+  );
 
   return (
     <section style={{ display: "grid", gap: "1rem", maxWidth: "1080px" }}>
@@ -206,6 +251,61 @@ export default async function CommessaDetailPage({ params }: CommessaDetailPageP
               <span>{formatDateTime(overview.commessa.updatedAt)}</span>
             </div>
           </section>
+
+          {commessaCustomSections.length > 0 ? (
+            <section style={{ display: "grid", gap: "0.7rem" }}>
+              <strong>Campi personalizzati contestuali (header)</strong>
+              {commessaCustomSections.map((section) => (
+                <article
+                  key={section.sectionCode}
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "0.7rem",
+                    background: "#f8fafc",
+                    padding: "0.75rem",
+                    display: "grid",
+                    gap: "0.6rem",
+                  }}
+                >
+                  <strong style={{ fontSize: "0.9rem" }}>{section.label}</strong>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                      gap: "0.55rem",
+                    }}
+                  >
+                    {section.fields.map((field) => (
+                      <div
+                        key={`${field.definition.definitionId}:${field.binding.id}`}
+                        style={{
+                          border: "1px solid #dbe2ea",
+                          borderRadius: "0.6rem",
+                          background: "#fff",
+                          padding: "0.55rem",
+                          display: "grid",
+                          gap: "0.2rem",
+                        }}
+                      >
+                        <span style={{ fontSize: "0.8rem", color: "#475569" }}>
+                          {field.definition.label}
+                        </span>
+                        <strong>
+                          {formatCustomFieldValue(
+                            commessaValueByDefinitionId.get(field.definition.definitionId) ?? null,
+                            field.definition.defaultValue,
+                          )}
+                        </strong>
+                        <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                          ordine: {field.binding.sortOrder}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </section>
+          ) : null}
 
           <section style={{ display: "grid", gap: "0.65rem" }}>
             <strong>Attori coinvolti</strong>
