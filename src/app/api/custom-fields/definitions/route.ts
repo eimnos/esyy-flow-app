@@ -16,6 +16,18 @@ import { findTenantMembership, getUserTenantMemberships } from "@/lib/tenant/mem
 const parseBool = (value: string | null | undefined) =>
   value === "1" || value === "true" || value === "yes" || value === "on";
 
+const parseSortOrder = (value: unknown) => {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : Number.parseInt(String(value ?? "").trim(), 10);
+  if (!Number.isFinite(numeric)) {
+    return 100;
+  }
+  const truncated = Math.trunc(numeric);
+  return Math.max(1, Math.min(10000, truncated));
+};
+
 const parseEnumOptions = (value: string | null | undefined) => {
   const text = (value ?? "").trim();
   if (!text) {
@@ -158,6 +170,8 @@ export async function POST(request: Request) {
     requirednessMode:
       String(payload.requiredness_mode ?? "optional") === "required" ? "required" : "optional",
     enumOptions: parseEnumOptions(String(payload.enum_options ?? "")),
+    defaultValue: String(payload.default_value ?? ""),
+    sortOrder: parseSortOrder(payload.sort_order),
   });
 
   if (wantsJson) {
